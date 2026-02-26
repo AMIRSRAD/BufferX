@@ -1,0 +1,799 @@
+<Packagers>
+	<Packager Name="SLM" MacMethod="FULL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="64"  FieldCount="128" LenFormat="SLM" LenLen="4">
+		<Field FieldId="0" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags ="00" />
+		<Field FieldId="1" FieldType="IFA_BITMAP"  FieldLength="128" FieldDesc="BIT MAP" Flags ="00" />
+		<Field FieldId="2" FieldType="IFA_LLNUM"   FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags ="00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="PROCESSING CODE" Flags ="00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, TRANSACTION" Flags ="00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, SETTLEMENT" Flags ="00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSMISSION DATE AND TIME" Flags ="00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="AMOUNT, CARDHOLDER BILLING FEE" Flags ="00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags ="00" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="TIME, LOCAL TRANSACTION" Flags ="00" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags ="00" />
+		<Field FieldId="14" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags ="00" />
+		<Field FieldId="15" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="16" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CONVERSION" Flags ="00" />
+		<Field FieldId="17" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CAPTURE" Flags ="00" />
+		<Field FieldId="18" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MERCHANTS TYPE" Flags ="00" />
+		<Field FieldId="19" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="ACQUIRING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="20" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="PAN EXTENDED COUNTRY CODE" Flags ="00" />
+		<Field FieldId="21" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="FORWARDING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="22" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags ="00" />
+		<Field FieldId="23" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="CARD SEQUENCE NUMBER" Flags ="00" />
+		<Field FieldId="24" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags ="00" />
+		<Field FieldId="25" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags ="00" />
+		<Field FieldId="26" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE PIN CAPTURE CODE" Flags ="00" />
+		<Field FieldId="27" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="AUTHORIZATION IDENTIFICATION RESP LEN" Flags ="00" />
+		<Field FieldId="28" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION FEE" Flags ="00" />
+		<Field FieldId="29" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT FEE" Flags ="00" />
+		<Field FieldId="30" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION PROCESSING FEE" Flags ="00" />
+		<Field FieldId="31" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT PROCESSING FEE" Flags ="00" />
+		<Field FieldId="32" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="ACQUIRING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="33" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="FORWARDING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="34" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="PAN EXTENDED" Flags ="00" />
+		<Field FieldId="35" FieldType="IFA_LLNUM"   FieldLength="37" FieldDesc="TRACK 2 DATA" Flags ="00" />
+		<Field FieldId="36" FieldType="IFA_LLLCHAR" FieldLength="104"  FieldDesc="RACK 3 DATA" Flags ="00" />
+		<Field FieldId="37" FieldType="IF_CHAR"     FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags ="00" />
+		<Field FieldId="38" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags ="00" />
+		<Field FieldId="39" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="RESPONSE CODE" Flags ="00" />
+		<Field FieldId="40" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="SERVICE RESTRICTION CODE" Flags ="00" />
+		<Field FieldId="41" FieldType="IF_CHAR"      FieldLength="8" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags ="00" />
+		<Field FieldId="42" FieldType="IF_CHAR"     FieldLength="15" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" />
+		<Field FieldId="43" FieldType="IF_CHAR"     FieldLength="40" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags ="00" />
+		<Field FieldId="44" FieldType="IFA_LLCHAR"  FieldLength="96" FieldDesc="ADITIONAL RESPONSE DATA" Flags ="00" />
+		<Field FieldId="45" FieldType="IFA_LLCHAR"  FieldLength="76" FieldDesc="TRACK 1 DATA" Flags ="00" />
+		<Field FieldId="46" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - ISO" Flags ="00" />
+		<Field FieldId="47" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - NATIONAL" Flags ="00" />
+		<Field FieldId="48" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - PRIVATE" Flags ="00" />
+		<Field FieldId="49" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, TRANSACTION" Flags ="00" />
+		<Field FieldId="50" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="51" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="52" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="PIN DATA" Flags ="00" />
+		<Field FieldId="53" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags ="00" />
+		<Field FieldId="54" FieldType="IFA_LLLCHAR" FieldLength="120"  FieldDesc="DDITIONAL AMOUNTS" Flags ="00" />
+		<Field FieldId="55" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+		<Field FieldId="56" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+		<Field FieldId="57" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="58" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="59" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="60" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="61" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="62" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="63" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="64" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags ="00" />
+		<Field FieldId="65" FieldType="IFA_BINARY"   FieldLength="1" FieldDesc="BITMAP, EXTENDED" Flags ="00" />
+		<Field FieldId="66" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="SETTLEMENT CODE" Flags ="00" />
+		<Field FieldId="67" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="EXTENDED PAYMENT CODE" Flags ="00" />
+		<Field FieldId="68" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="RECEIVING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="69" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="SETTLEMENT INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="70" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK MANAGEMENT INFORMATION CODE" Flags ="00" />
+		<Field FieldId="71" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER" Flags ="00" />
+		<Field FieldId="72" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER LAST" Flags ="00" />
+		<Field FieldId="73" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="DATE ACTION" Flags ="00" />
+		<Field FieldId="74" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS NUMBER" Flags ="00" />
+		<Field FieldId="75" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="76" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS NUMBER" Flags ="00" />
+		<Field FieldId="77" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="78" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER NUMBER" Flags ="00" />
+		<Field FieldId="79" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="80" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="INQUIRIES NUMBER" Flags ="00" />
+		<Field FieldId="81" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="AUTHORIZATION NUMBER" Flags ="00" />
+		<Field FieldId="82" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, PROCESSING FEE AMOUNT" Flags ="00" />
+		<Field FieldId="83" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+		<Field FieldId="84" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, PROCESSING FEE AMOUNT" Flags ="00" />
+		<Field FieldId="85" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+		<Field FieldId="86" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, AMOUNT" Flags ="00" />
+		<Field FieldId="87" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, REVERSAL AMOUNT" Flags ="00" />
+		<Field FieldId="88" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, AMOUNT" Flags ="00" />
+		<Field FieldId="89" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, REVERSAL AMOUNT" Flags ="00" />
+		<Field FieldId="90" FieldType="IFA_NUMERIC" FieldLength="42" FieldDesc="ORIGINAL DATA ELEMENTS" Flags ="00" />
+		<Field FieldId="91" FieldType="IF_CHAR"      FieldLength="1" FieldDesc="FILE UPDATE CODE" Flags ="00" />
+		<Field FieldId="92" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="FILE SECURITY CODE" Flags ="00" />
+		<Field FieldId="93" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="RESPONSE INDICATOR" Flags ="00" />
+		<Field FieldId="94" FieldType="IF_CHAR"      FieldLength="7" FieldDesc="SERVICE INDICATOR" Flags ="00" />
+		<Field FieldId="95" FieldType="IF_CHAR"     FieldLength="42" FieldDesc="REPLACEMENT AMOUNTS" Flags ="00" />
+		<Field FieldId="96" FieldType="IFA_BINARY"  FieldLength="8" FieldDesc="MESSAGE SECURITY CODE" Flags ="00" />
+		<Field FieldId="97" FieldType="IFA_AMOUNT"  FieldLength="17" FieldDesc="AMOUNT, NET SETTLEMENT" Flags ="00" />
+		<Field FieldId="98" FieldType="IF_CHAR"     FieldLength="25" FieldDesc="PAYEE" Flags ="00" />
+		<Field FieldId="99" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="SETTLEMENT INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="100" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="RECEIVING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="101" FieldType="IFA_LLCHAR"  FieldLength="17" FieldDesc="FILE NAME" Flags ="00" />
+		<Field FieldId="102" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 1" Flags ="00" />
+		<Field FieldId="103" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 2" Flags ="00" />
+		<Field FieldId="104" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RANSACTION DESCRIPTION" Flags ="00" />
+		<Field FieldId="105" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="106" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="107" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="108" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="109" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="110" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="111" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="112" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="113" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="114" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="115" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="116" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="117" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="118" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="119" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="120" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="121" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="122" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="123" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE--Customer Alert" Flags ="00" />
+		<Field FieldId="124" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="125" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="126" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="127" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="128" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MAC 2" Flags ="00" />
+	</Packager>
+	<Packager Name="SLMLink" MacMethod="FULL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="64"  FieldCount="128" LenFormat="SLM" LenLen="6">
+		<Field FieldId="0" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags ="00" />
+		<Field FieldId="1" FieldType="IFA_BITMAP"  FieldLength="128" FieldDesc="BIT MAP" Flags ="00" />
+		<Field FieldId="2" FieldType="IFA_LLNUM"   FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags ="00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="PROCESSING CODE" Flags ="00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, TRANSACTION" Flags ="00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, SETTLEMENT" Flags ="00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSMISSION DATE AND TIME" Flags ="00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="AMOUNT, CARDHOLDER BILLING FEE" Flags ="00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags ="00" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="TIME, LOCAL TRANSACTION" Flags ="00" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags ="00" />
+		<Field FieldId="14" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags ="00" />
+		<Field FieldId="15" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="16" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CONVERSION" Flags ="00" />
+		<Field FieldId="17" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CAPTURE" Flags ="00" />
+		<Field FieldId="18" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MERCHANTS TYPE" Flags ="00" />
+		<Field FieldId="19" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="ACQUIRING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="20" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="PAN EXTENDED COUNTRY CODE" Flags ="00" />
+		<Field FieldId="21" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="FORWARDING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="22" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags ="00" />
+		<Field FieldId="23" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="CARD SEQUENCE NUMBER" Flags ="00" />
+		<Field FieldId="24" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags ="00" />
+		<Field FieldId="25" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags ="00" />
+		<Field FieldId="26" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE PIN CAPTURE CODE" Flags ="00" />
+		<Field FieldId="27" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="AUTHORIZATION IDENTIFICATION RESP LEN" Flags ="00" />
+		<Field FieldId="28" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION FEE" Flags ="00" />
+		<Field FieldId="29" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT FEE" Flags ="00" />
+		<Field FieldId="30" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION PROCESSING FEE" Flags ="00" />
+		<Field FieldId="31" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT PROCESSING FEE" Flags ="00" />
+		<Field FieldId="32" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="ACQUIRING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="33" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="FORWARDING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="34" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="PAN EXTENDED" Flags ="00" />
+		<Field FieldId="35" FieldType="IFA_LLNUM"   FieldLength="37" FieldDesc="TRACK 2 DATA" Flags ="00" />
+		<Field FieldId="36" FieldType="IFA_LLLCHAR" FieldLength="104"  FieldDesc="RACK 3 DATA" Flags ="00" />
+		<Field FieldId="37" FieldType="IF_CHAR"     FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags ="00" />
+		<Field FieldId="38" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags ="00" />
+		<Field FieldId="39" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="RESPONSE CODE" Flags ="00" />
+		<Field FieldId="40" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="SERVICE RESTRICTION CODE" Flags ="00" />
+		<Field FieldId="41" FieldType="IF_CHAR"      FieldLength="8" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags ="00" />
+		<Field FieldId="42" FieldType="IF_CHAR"     FieldLength="15" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" />
+		<Field FieldId="43" FieldType="IF_CHAR"     FieldLength="40" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags ="00" />
+		<Field FieldId="44" FieldType="IFA_LLCHAR"  FieldLength="96" FieldDesc="ADITIONAL RESPONSE DATA" Flags ="00" />
+		<Field FieldId="45" FieldType="IFA_LLCHAR"  FieldLength="76" FieldDesc="TRACK 1 DATA" Flags ="00" />
+		<Field FieldId="46" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - ISO" Flags ="00" />
+		<Field FieldId="47" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - NATIONAL" Flags ="00" />
+		<Field FieldId="48" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - PRIVATE" Flags ="00" />
+		<Field FieldId="49" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, TRANSACTION" Flags ="00" />
+		<Field FieldId="50" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, SETTLEMENT" Flags ="00" />
+		<Field FieldId="51" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, CARDHOLDER BILLING" Flags ="00" />
+		<Field FieldId="52" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="PIN DATA" Flags ="00" />
+		<Field FieldId="53" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags ="00" />
+		<Field FieldId="54" FieldType="IFA_LLLCHAR" FieldLength="120"  FieldDesc="DDITIONAL AMOUNTS" Flags ="00" />
+		<Field FieldId="55" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+		<Field FieldId="56" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+		<Field FieldId="57" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="58" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="59" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+		<Field FieldId="60" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="61" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="62" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="63" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="64" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags ="00" />
+		<Field FieldId="65" FieldType="IFA_BINARY"   FieldLength="1" FieldDesc="BITMAP, EXTENDED" Flags ="00" />
+		<Field FieldId="66" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="SETTLEMENT CODE" Flags ="00" />
+		<Field FieldId="67" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="EXTENDED PAYMENT CODE" Flags ="00" />
+		<Field FieldId="68" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="RECEIVING INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="69" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="SETTLEMENT INSTITUTION COUNTRY CODE" Flags ="00" />
+		<Field FieldId="70" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK MANAGEMENT INFORMATION CODE" Flags ="00" />
+		<Field FieldId="71" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER" Flags ="00" />
+		<Field FieldId="72" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER LAST" Flags ="00" />
+		<Field FieldId="73" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="DATE ACTION" Flags ="00" />
+		<Field FieldId="74" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS NUMBER" Flags ="00" />
+		<Field FieldId="75" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="76" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS NUMBER" Flags ="00" />
+		<Field FieldId="77" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="78" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER NUMBER" Flags ="00" />
+		<Field FieldId="79" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER REVERSAL NUMBER" Flags ="00" />
+		<Field FieldId="80" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="INQUIRIES NUMBER" Flags ="00" />
+		<Field FieldId="81" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="AUTHORIZATION NUMBER" Flags ="00" />
+		<Field FieldId="82" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, PROCESSING FEE AMOUNT" Flags ="00" />
+		<Field FieldId="83" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+		<Field FieldId="84" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, PROCESSING FEE AMOUNT" Flags ="00" />
+		<Field FieldId="85" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+		<Field FieldId="86" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, AMOUNT" Flags ="00" />
+		<Field FieldId="87" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, REVERSAL AMOUNT" Flags ="00" />
+		<Field FieldId="88" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, AMOUNT" Flags ="00" />
+		<Field FieldId="89" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, REVERSAL AMOUNT" Flags ="00" />
+		<Field FieldId="90" FieldType="IFA_NUMERIC" FieldLength="42" FieldDesc="ORIGINAL DATA ELEMENTS" Flags ="00" />
+		<Field FieldId="91" FieldType="IF_CHAR"      FieldLength="1" FieldDesc="FILE UPDATE CODE" Flags ="00" />
+		<Field FieldId="92" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="FILE SECURITY CODE" Flags ="00" />
+		<Field FieldId="93" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="RESPONSE INDICATOR" Flags ="00" />
+		<Field FieldId="94" FieldType="IF_CHAR"      FieldLength="7" FieldDesc="SERVICE INDICATOR" Flags ="00" />
+		<Field FieldId="95" FieldType="IF_CHAR"     FieldLength="42" FieldDesc="REPLACEMENT AMOUNTS" Flags ="00" />
+		<Field FieldId="96" FieldType="IFA_BINARY"  FieldLength="8" FieldDesc="MESSAGE SECURITY CODE" Flags ="00" />
+		<Field FieldId="97" FieldType="IFA_AMOUNT"  FieldLength="17" FieldDesc="AMOUNT, NET SETTLEMENT" Flags ="00" />
+		<Field FieldId="98" FieldType="IF_CHAR"     FieldLength="25" FieldDesc="PAYEE" Flags ="00" />
+		<Field FieldId="99" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="SETTLEMENT INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="100" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="RECEIVING INSTITUTION IDENT CODE" Flags ="00" />
+		<Field FieldId="101" FieldType="IFA_LLCHAR"  FieldLength="17" FieldDesc="FILE NAME" Flags ="00" />
+		<Field FieldId="102" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 1" Flags ="00" />
+		<Field FieldId="103" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 2" Flags ="00" />
+		<Field FieldId="104" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RANSACTION DESCRIPTION" Flags ="00" />
+		<Field FieldId="105" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="106" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="107" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="108" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="109" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="110" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="111" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+		<Field FieldId="112" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="113" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="114" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="115" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="116" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="117" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="118" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="119" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+		<Field FieldId="120" FieldType="IFA_LLLLLLCHAR" FieldLength="999999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="121" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="122" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="123" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE--Customer Alert" Flags ="00" />
+		<Field FieldId="124" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="125" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="126" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="127" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+		<Field FieldId="128" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MAC 2" Flags ="00" />
+	</Packager>
+  <Packager Name="NEGIN" MacMethod="FULL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="64"  FieldCount="128" LenFormat="SLM" LenLen="4">
+    <Field FieldId="0" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags ="00" />
+    <Field FieldId="1" FieldType="IFA_BITMAP"  FieldLength="128" FieldDesc="BIT MAP" Flags ="00" />
+    <Field FieldId="2" FieldType="IFA_LLNUM"   FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags ="00" />
+    <Field FieldId="3" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="PROCESSING CODE" Flags ="00" />
+    <Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, TRANSACTION" Flags ="00" />
+    <Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, SETTLEMENT" Flags ="00" />
+    <Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, CARDHOLDER BILLING" Flags ="00" />
+    <Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSMISSION DATE AND TIME" Flags ="00" />
+    <Field FieldId="8" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="AMOUNT, CARDHOLDER BILLING FEE" Flags ="00" />
+    <Field FieldId="9" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, SETTLEMENT" Flags ="00" />
+    <Field FieldId="10" FieldType="IFA_NUMERIC"  FieldLength="8" FieldDesc="CONVERSION RATE, CARDHOLDER BILLING" Flags ="00" />
+    <Field FieldId="11" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags ="00" />
+    <Field FieldId="12" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="TIME, LOCAL TRANSACTION" Flags ="00" />
+    <Field FieldId="13" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags ="00" />
+    <Field FieldId="14" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags ="00" />
+    <Field FieldId="15" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, SETTLEMENT" Flags ="00" />
+    <Field FieldId="16" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CONVERSION" Flags ="00" />
+    <Field FieldId="17" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="DATE, CAPTURE" Flags ="00" />
+    <Field FieldId="18" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MERCHANTS TYPE" Flags ="00" />
+    <Field FieldId="19" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="ACQUIRING INSTITUTION COUNTRY CODE" Flags ="00" />
+    <Field FieldId="20" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="PAN EXTENDED COUNTRY CODE" Flags ="00" />
+    <Field FieldId="21" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="FORWARDING INSTITUTION COUNTRY CODE" Flags ="00" />
+    <Field FieldId="22" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags ="00" />
+    <Field FieldId="23" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="CARD SEQUENCE NUMBER" Flags ="00" />
+    <Field FieldId="24" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags ="00" />
+    <Field FieldId="25" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags ="00" />
+    <Field FieldId="26" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE PIN CAPTURE CODE" Flags ="00" />
+    <Field FieldId="27" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="AUTHORIZATION IDENTIFICATION RESP LEN" Flags ="00" />
+    <Field FieldId="28" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION FEE" Flags ="00" />
+    <Field FieldId="29" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT FEE" Flags ="00" />
+    <Field FieldId="30" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, TRANSACTION PROCESSING FEE" Flags ="00" />
+    <Field FieldId="31" FieldType="IFA_AMOUNT"   FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT PROCESSING FEE" Flags ="00" />
+    <Field FieldId="32" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="ACQUIRING INSTITUTION IDENT CODE" Flags ="00" />
+    <Field FieldId="33" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="FORWARDING INSTITUTION IDENT CODE" Flags ="00" />
+    <Field FieldId="34" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="PAN EXTENDED" Flags ="00" />
+    <Field FieldId="35" FieldType="IFA_LLNUM"   FieldLength="37" FieldDesc="TRACK 2 DATA" Flags ="00" />
+    <Field FieldId="36" FieldType="IFA_LLLCHAR" FieldLength="104"  FieldDesc="RACK 3 DATA" Flags ="00" />
+    <Field FieldId="37" FieldType="IF_CHAR"     FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags ="00" />
+    <Field FieldId="38" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags ="00" />
+    <Field FieldId="39" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="RESPONSE CODE" Flags ="00" />
+    <Field FieldId="40" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="SERVICE RESTRICTION CODE" Flags ="00" />
+    <Field FieldId="41" FieldType="IF_CHAR"      FieldLength="8" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags ="00" />
+    <Field FieldId="42" FieldType="IF_CHAR"     FieldLength="15" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" />
+    <Field FieldId="43" FieldType="IF_CHAR"     FieldLength="40" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags ="00" />
+    <Field FieldId="44" FieldType="IFA_LLCHAR"  FieldLength="96" FieldDesc="ADITIONAL RESPONSE DATA" Flags ="00" />
+    <Field FieldId="45" FieldType="IFA_LLCHAR"  FieldLength="76" FieldDesc="TRACK 1 DATA" Flags ="00" />
+    <Field FieldId="46" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - ISO" Flags ="00" />
+    <Field FieldId="47" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - NATIONAL" Flags ="00" />
+    <Field FieldId="48" FieldType="IFA_LLLLCHAR" FieldLength="999"  FieldDesc="DITIONAL DATA - PRIVATE" Flags ="00" />
+    <Field FieldId="49" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, TRANSACTION" Flags ="00" />
+    <Field FieldId="50" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, SETTLEMENT" Flags ="00" />
+    <Field FieldId="51" FieldType="IF_CHAR"      FieldLength="3" FieldDesc="CURRENCY CODE, CARDHOLDER BILLING" Flags ="00" />
+    <Field FieldId="52" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="PIN DATA" Flags ="00" />
+    <Field FieldId="53" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags ="00" />
+    <Field FieldId="54" FieldType="IFA_LLLCHAR" FieldLength="120"  FieldDesc="DDITIONAL AMOUNTS" Flags ="00" />
+    <Field FieldId="55" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+    <Field FieldId="56" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO" Flags ="00" />
+    <Field FieldId="57" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+    <Field FieldId="58" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+    <Field FieldId="59" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL" Flags ="00" />
+    <Field FieldId="60" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+    <Field FieldId="61" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+    <Field FieldId="62" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+    <Field FieldId="63" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+    <Field FieldId="64" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags ="00" />
+    <Field FieldId="65" FieldType="IFA_BINARY"   FieldLength="1" FieldDesc="BITMAP, EXTENDED" Flags ="00" />
+    <Field FieldId="66" FieldType="IFA_NUMERIC"  FieldLength="1" FieldDesc="SETTLEMENT CODE" Flags ="00" />
+    <Field FieldId="67" FieldType="IFA_NUMERIC"  FieldLength="2" FieldDesc="EXTENDED PAYMENT CODE" Flags ="00" />
+    <Field FieldId="68" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="RECEIVING INSTITUTION COUNTRY CODE" Flags ="00" />
+    <Field FieldId="69" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="SETTLEMENT INSTITUTION COUNTRY CODE" Flags ="00" />
+    <Field FieldId="70" FieldType="IFA_NUMERIC"  FieldLength="3" FieldDesc="NETWORK MANAGEMENT INFORMATION CODE" Flags ="00" />
+    <Field FieldId="71" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER" Flags ="00" />
+    <Field FieldId="72" FieldType="IFA_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE NUMBER LAST" Flags ="00" />
+    <Field FieldId="73" FieldType="IFA_NUMERIC"  FieldLength="6" FieldDesc="DATE ACTION" Flags ="00" />
+    <Field FieldId="74" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS NUMBER" Flags ="00" />
+    <Field FieldId="75" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="CREDITS REVERSAL NUMBER" Flags ="00" />
+    <Field FieldId="76" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS NUMBER" Flags ="00" />
+    <Field FieldId="77" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="DEBITS REVERSAL NUMBER" Flags ="00" />
+    <Field FieldId="78" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER NUMBER" Flags ="00" />
+    <Field FieldId="79" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="TRANSFER REVERSAL NUMBER" Flags ="00" />
+    <Field FieldId="80" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="INQUIRIES NUMBER" Flags ="00" />
+    <Field FieldId="81" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="AUTHORIZATION NUMBER" Flags ="00" />
+    <Field FieldId="82" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, PROCESSING FEE AMOUNT" Flags ="00" />
+    <Field FieldId="83" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="CREDITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+    <Field FieldId="84" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, PROCESSING FEE AMOUNT" Flags ="00" />
+    <Field FieldId="85" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="DEBITS, TRANSACTION FEE AMOUNT" Flags ="00" />
+    <Field FieldId="86" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, AMOUNT" Flags ="00" />
+    <Field FieldId="87" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="CREDITS, REVERSAL AMOUNT" Flags ="00" />
+    <Field FieldId="88" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, AMOUNT" Flags ="00" />
+    <Field FieldId="89" FieldType="IFA_NUMERIC" FieldLength="16" FieldDesc="DEBITS, REVERSAL AMOUNT" Flags ="00" />
+    <Field FieldId="90" FieldType="IFA_NUMERIC" FieldLength="42" FieldDesc="ORIGINAL DATA ELEMENTS" Flags ="00" />
+    <Field FieldId="91" FieldType="IF_CHAR"      FieldLength="1" FieldDesc="FILE UPDATE CODE" Flags ="00" />
+    <Field FieldId="92" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="FILE SECURITY CODE" Flags ="00" />
+    <Field FieldId="93" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="RESPONSE INDICATOR" Flags ="00" />
+    <Field FieldId="94" FieldType="IF_CHAR"      FieldLength="7" FieldDesc="SERVICE INDICATOR" Flags ="00" />
+    <Field FieldId="95" FieldType="IF_CHAR"     FieldLength="42" FieldDesc="REPLACEMENT AMOUNTS" Flags ="00" />
+    <Field FieldId="96" FieldType="IFA_BINARY"  FieldLength="8" FieldDesc="MESSAGE SECURITY CODE" Flags ="00" />
+    <Field FieldId="97" FieldType="IFA_AMOUNT"  FieldLength="17" FieldDesc="AMOUNT, NET SETTLEMENT" Flags ="00" />
+    <Field FieldId="98" FieldType="IF_CHAR"     FieldLength="25" FieldDesc="PAYEE" Flags ="00" />
+    <Field FieldId="99" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="SETTLEMENT INSTITUTION IDENT CODE" Flags ="00" />
+    <Field FieldId="100" FieldType="IFA_LLNUM"   FieldLength="11" FieldDesc="RECEIVING INSTITUTION IDENT CODE" Flags ="00" />
+    <Field FieldId="101" FieldType="IFA_LLCHAR"  FieldLength="17" FieldDesc="FILE NAME" Flags ="00" />
+    <Field FieldId="102" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 1" Flags ="00" />
+    <Field FieldId="103" FieldType="IFA_LLCHAR"  FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 2" Flags ="00" />
+    <Field FieldId="104" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RANSACTION DESCRIPTION" Flags ="00" />
+    <Field FieldId="105" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="106" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="107" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="108" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="109" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="110" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="111" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED ISO USE" Flags ="00" />
+    <Field FieldId="112" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="113" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="114" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="115" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="116" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="117" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="118" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="119" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED NATIONAL USE" Flags ="00" />
+    <Field FieldId="120" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="121" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="122" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="123" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE--Customer Alert" Flags ="00" />
+    <Field FieldId="124" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="125" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="126" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="127" FieldType="IFA_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE USE" Flags ="00" />
+    <Field FieldId="128" FieldType="IFA_BINARY"   FieldLength="8" FieldDesc="MAC 2" Flags ="00" />
+  </Packager>
+  <Packager Name="INFOTECH" MacMethod="FULL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="0"  FieldCount="64" LenFormat="SLM" LenLen="4">
+		<Field FieldId="0" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags ="10" />
+		<Field FieldId="1" FieldType="IFB_BITMAP"  FieldLength="128" FieldDesc="BIT MAP" Flags ="00" />
+		<Field FieldId="2" FieldType="IFB_LLNUM_PAN_HC"   FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags ="00" />
+		<Field FieldId="3" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="PROCESSING CODE" Flags ="10" />
+		<Field FieldId="4" FieldType="IFB_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, TRANSACTION" Flags ="10" />
+		<Field FieldId="11" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags ="10" />
+		<Field FieldId="12" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="TIME, LOCAL TRANSACTION" Flags ="10" />
+		<Field FieldId="13" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags ="10" />
+		<Field FieldId="14" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags ="10" />
+		<Field FieldId="22" FieldType="IFB_NUMERIC"  FieldLength="3" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags ="10" />
+		<Field FieldId="24" FieldType="IFB_NUMERIC"  FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags ="10" />
+		<Field FieldId="25" FieldType="IFB_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags ="10" />
+		<Field FieldId="35" FieldType="IFB_LLNUM_BCD"   FieldLength="37" FieldDesc="TRACK 2 DATA" Flags ="10" />
+		<Field FieldId="37" FieldType="IF_CHAR"     FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags ="00" />
+		<Field FieldId="38" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags ="00" />
+		<Field FieldId="39" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="RESPONSE CODE" Flags ="00" />
+		<Field FieldId="41" FieldType="IF_CHAR"      FieldLength="8" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags ="00" />
+		<Field FieldId="42" FieldType="IF_CHAR"     FieldLength="15" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" />
+		<Field FieldId="43" FieldType="IF_CHAR"     FieldLength="40" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags ="00" />
+		<Field FieldId="45" FieldType="IFB_LLCHAR"  FieldLength="76" FieldDesc="TRACK 1 DATA" Flags ="00" />
+		<Field FieldId="48" FieldType="IFB_LLLBINARY" FieldLength="999"  FieldDesc="DITIONAL DATA - PRIVATE" Flags ="00" />
+		<Field FieldId="52" FieldType="IFB_BINARY"   FieldLength="8" FieldDesc="PIN DATA" Flags ="00" />
+		<Field FieldId="53" FieldType="IFB_NUMERIC" FieldLength="16" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags ="10" />
+		<Field FieldId="54" FieldType="IFB_LLLCHAR" FieldLength="120"  FieldDesc="DDITIONAL AMOUNTS" Flags ="00" />
+		<Field FieldId="55" FieldType="IFB_LLLBINARY" FieldLength="255" FieldDesc="IC card system related data" Flags ="00" />
+		<Field FieldId="60" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="61" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="62" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="63" FieldType="IFB_LLLBINARY" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="64" FieldType="IFB_BINARY"   FieldLength="8" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags ="00" />
+	</Packager>
+	<Packager Name="HYPERCOM" MacMethod="FULL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="0"  FieldCount="64" LenFormat="HYPERCOM" LenLen="2">
+		<Field FieldId="0" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags ="10" />
+		<Field FieldId="1" FieldType="IFB_BITMAP"  FieldLength="128" FieldDesc="BIT MAP" Flags ="00" />
+		<Field FieldId="2" FieldType="IFB_LLNUM_PAN_HC"   FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags ="00" />
+		<Field FieldId="3" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="PROCESSING CODE" Flags ="10" />
+		<Field FieldId="4" FieldType="IFB_NUMERIC" FieldLength="12" FieldDesc="AMOUNT, TRANSACTION" Flags ="10" />
+		<Field FieldId="11" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags ="10" />
+		<Field FieldId="12" FieldType="IFB_NUMERIC"  FieldLength="6" FieldDesc="TIME, LOCAL TRANSACTION" Flags ="10" />
+		<Field FieldId="13" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags ="10" />
+		<Field FieldId="14" FieldType="IFB_NUMERIC"  FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags ="10" />
+		<Field FieldId="22" FieldType="IFB_NUMERIC"  FieldLength="3" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags ="10" />
+		<Field FieldId="24" FieldType="IFB_NUMERIC"  FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags ="10" />
+		<Field FieldId="25" FieldType="IFB_NUMERIC"  FieldLength="2" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags ="10" />
+		<Field FieldId="35" FieldType="IFB_LLNUM_BCD"   FieldLength="37" FieldDesc="TRACK 2 DATA" Flags ="10" />
+		<Field FieldId="37" FieldType="IF_CHAR"     FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags ="00" />
+		<Field FieldId="38" FieldType="IF_CHAR"      FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags ="00" />
+		<Field FieldId="39" FieldType="IF_CHAR"      FieldLength="2" FieldDesc="RESPONSE CODE" Flags ="00" />
+		<Field FieldId="41" FieldType="IF_CHAR"      FieldLength="8" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags ="00" />
+		<Field FieldId="42" FieldType="IF_CHAR"     FieldLength="15" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" />
+		<Field FieldId="43" FieldType="IF_CHAR"     FieldLength="40" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags ="00" />
+		<Field FieldId="45" FieldType="IFB_LLCHAR"  FieldLength="76" FieldDesc="TRACK 1 DATA" Flags ="00" />
+		<Field FieldId="48" FieldType="IFB_LLLBINARY" FieldLength="999"  FieldDesc="DITIONAL DATA - PRIVATE" Flags ="00" />
+		<Field FieldId="52" FieldType="IFB_BINARY"   FieldLength="8" FieldDesc="PIN DATA"  Flags ="00" />
+		<Field FieldId="53" FieldType="IFB_NUMERIC" FieldLength="16" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags ="10" />
+		<Field FieldId="54" FieldType="IFB_LLLCHAR" FieldLength="120"  FieldDesc="DDITIONAL AMOUNTS" Flags ="00" />
+		<Field FieldId="55" FieldType="IFB_LLLBINARY" FieldLength="255" FieldDesc="IC card system related data" Flags ="00" />
+		<Field FieldId="60" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="61" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="62" FieldType="IFB_LLLCHAR" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="63" FieldType="IFB_LLLBINARY" FieldLength="999"  FieldDesc="RESERVED PRIVATE" Flags ="00" />
+		<Field FieldId="64" FieldType="IFB_BINARY"   FieldLength="8" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags ="00" />
+	</Packager>
+	<Packager Name="SHETAB7" MacMethod="PARTIAL" MacSize="16"   BitmapIndex="1" SecondPartBitmap="64"  FieldCount="128"  LenFormat="SLM" LenLen="4">
+		<Field FieldId="0" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="MESSAGE TYPE INDICATOR" Flags = "00" />
+		<Field FieldId="1" FieldType="IFA_BITMAP"   FieldLength="128" FieldDesc="BIT MAP" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_LLNUM"    FieldLength="19" FieldDesc="PAN - PRIMARY ACCOUNT NUMBER" Flags = "10" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC"   FieldLength="6" FieldDesc="PROCESSING CODE" Flags = "10" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="AMOUNT, TRANSACTION" Flags = "10" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="AMOUNT, SETTLEMENT" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="AMOUNT, CARDHOLDER BILLING" Flags = "10" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="TRANSMISSION DATE AND TIME" Flags = "10" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC"   FieldLength="8" FieldDesc="AMOUNT, CARDHOLDER BILLING FEE" Flags = "00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC"   FieldLength="8" FieldDesc="CONVERSION RATE, SETTLEMENT" Flags = "00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC"   FieldLength="8" FieldDesc="CONVERSION RATE, CARDHOLDER BILLING" Flags = "10" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC"   FieldLength="12" FieldDesc="SYSTEM TRACE AUDIT NUMBER" Flags = "10" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC"   FieldLength="14" FieldDesc="TIME, LOCAL TRANSACTION" Flags = "10" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="DATE, LOCAL TRANSACTION" Flags = "00" />
+		<Field FieldId="14" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="DATE, EXPIRATION" Flags = "00" />
+		<Field FieldId="15" FieldType="IFA_NUMERIC"   FieldLength="8" FieldDesc="DATE, SETTLEMENT" Flags = "10" />
+		<Field FieldId="16" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="DATE, CONVERSION" Flags = "00" />
+		<Field FieldId="17" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="DATE, CAPTURE" Flags = "10" />
+		<Field FieldId="18" FieldType="IFA_LLLNUM"   FieldLength="140"  FieldDesc="ESSAGE ERROR INDICATOR" Flags = "00" />
+		<Field FieldId="19" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="ACQUIRING INSTITUTION COUNTRY CODE" Flags = "00" />
+		<Field FieldId="20" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="PAN EXTENDED COUNTRY CODE" Flags = "00" />
+		<Field FieldId="21" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="FORWARDING INSTITUTION COUNTRY CODE" Flags = "00" />
+		<Field FieldId="22" FieldType="IFA_BINARY"    FieldLength="16" FieldDesc="POINT OF SERVICE ENTRY MODE" Flags = "10" />
+		<Field FieldId="23" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="CARD SEQUENCE NUMBER" Flags = "00" />
+		<Field FieldId="24" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="NETWORK INTERNATIONAL IDENTIFIEER" Flags = "10" />
+		<Field FieldId="25" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="POINT OF SERVICE CONDITION CODE" Flags = "10" />
+		<Field FieldId="26" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="POINT OF SERVICE PIN CAPTURE CODE" Flags = "00" />
+		<Field FieldId="27" FieldType="IF_CHAR"   FieldLength="36" FieldDesc="AUTHORIZATION IDENTIFICATION RESP LEN" Flags = "10" />
+		<Field FieldId="28" FieldType="IFA_AMOUNT"    FieldLength="9" FieldDesc="AMOUNT, TRANSACTION FEE" Flags = "00" />
+		<Field FieldId="29" FieldType="IFA_AMOUNT"    FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT FEE" Flags = "00" />
+		<Field FieldId="30" FieldType="IFA_AMOUNT"    FieldLength="32" FieldDesc="AMOUNT, TRANSACTION PROCESSING FEE" Flags = "10" />
+		<Field FieldId="31" FieldType="IFA_AMOUNT"    FieldLength="9" FieldDesc="AMOUNT, SETTLEMENT PROCESSING FEE" Flags = "00" />
+		<Field FieldId="32" FieldType="IFA_LLNUM"    FieldLength="11" FieldDesc="ACQUIRING INSTITUTION IDENT CODE" Flags = "10" />
+		<Field FieldId="33" FieldType="IFA_LLNUM"    FieldLength="11" FieldDesc="FORWARDING INSTITUTION IDENT CODE" Flags = "10" />
+		<Field FieldId="34" FieldType="IFA_LLCHAR"   FieldLength="28" FieldDesc="PAN EXTENDED" Flags = "00" />
+		<Field FieldId="35" FieldType="IFA_LLNUM"    FieldLength="37" FieldDesc="TRACK 2 DATA" Flags = "00" />
+		<Field FieldId="36" FieldType="IFA_LLLCHAR" FieldLength="104"  FieldDesc="RACK 3 DATA" Flags = "00" />
+		<Field FieldId="37" FieldType="IF_CHAR"      FieldLength="12" FieldDesc="RETRIEVAL REFERENCE NUMBER" Flags = "10" />
+		<Field FieldId="38" FieldType="IF_CHAR"       FieldLength="6" FieldDesc="AUTHORIZATION IDENTIFICATION RESPONSE" Flags = "00" />
+		<Field FieldId="39" FieldType="IF_CHAR"       FieldLength="4" FieldDesc="RESPONSE CODE" Flags = "10" />
+		<Field FieldId="40" FieldType="IF_CHAR"       FieldLength="3" FieldDesc="SERVICE RESTRICTION CODE" Flags = "00" />
+		<Field FieldId="41" FieldType="IF_CHAR"       FieldLength="16" FieldDesc="CARD ACCEPTOR TERMINAL IDENTIFICACION" Flags = "10" />
+		<Field FieldId="42" FieldType="IFA_LLCHAR"   FieldLength="25" FieldDesc="CARD ACCEPTOR IDENTIFICATION CODE" Flags = "10" />
+		<Field FieldId="43" FieldType="IFA_LLLLCHAR" FieldLength="9999" FieldDesc="CARD ACCEPTOR NAME/LOCATION" Flags = "00" />
+		<Field FieldId="44" FieldType="IFA_LLLLCHAR"   FieldLength="9999" FieldDesc="ADITIONAL RESPONSE DATA" Flags = "00" />
+		<Field FieldId="45" FieldType="IFA_LLCHAR"   FieldLength="76" FieldDesc="TRACK 1 DATA" Flags = "00" />
+		<Field FieldId="46" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="DITIONAL DATA - ISO" Flags = "00" />
+		<Field FieldId="47" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="DITIONAL DATA - NATIONAL" Flags = "00" />
+		<Field FieldId="48" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="DITIONAL DATA - PRIVATE" Flags = "10" />
+		<Field FieldId="49" FieldType="IF_CHAR"       FieldLength="3" FieldDesc="CURRENCY CODE, TRANSACTION" Flags = "00" />
+		<Field FieldId="50" FieldType="IF_CHAR"       FieldLength="3" FieldDesc="CURRENCY CODE, SETTLEMENT" Flags = "00" />
+		<Field FieldId="51" FieldType="IF_CHAR"       FieldLength="3" FieldDesc="CURRENCY CODE, CARDHOLDER BILLING" Flags = "00" />
+		<Field FieldId="52" FieldType="IFA_BINARY"    FieldLength="8" FieldDesc="PIN DATA" Flags = "00" />
+		<Field FieldId="53" FieldType="IFA_LLBINARY" FieldLength="48" FieldDesc="SECURITY RELATED CONTROL INFORMATION" Flags = "00" />
+		<Field FieldId="54" FieldType="IFA_LLLCHAR"  FieldLength="126"  FieldDesc="DDITIONAL AMOUNTS" Flags = "00" />
+		<Field FieldId="55" FieldType="IFA_LLLLBINARY" FieldLength="9999" FieldDesc="CC DATA" Flags = "00" />
+		<Field FieldId="56" FieldType="IFA_LLNUM" FieldLength="999" FieldDesc="RESERVED ISO" Flags = "10" />
+		<Field FieldId="57" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL" Flags = "00" />
+		<Field FieldId="58" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL" Flags = "00" />
+		<Field FieldId="59" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RANSPORT DATA" Flags = "00" />
+		<Field FieldId="60" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="HETAB SECURITY DATA" Flags = "10" />
+		<Field FieldId="61" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="BAN" Flags = "10" />
+		<Field FieldId="62" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="ransaction Coding" Flags = "10" />
+		<Field FieldId="63" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE" Flags = "00" />
+		<Field FieldId="64" FieldType="IFA_BINARY"    FieldLength="4" FieldDesc="MESSAGE AUTHENTICATION CODE FIELD" Flags = "00" />
+		<Field FieldId="65" FieldType="IFA_BINARY"    FieldLength="1" FieldDesc="BITMAP, EXTENDED" Flags = "00" />
+		<Field FieldId="66" FieldType="IFA_NUMERIC"   FieldLength="1" FieldDesc="SETTLEMENT CODE" Flags = "00" />
+		<Field FieldId="67" FieldType="IFA_NUMERIC"   FieldLength="2" FieldDesc="EXTENDED PAYMENT CODE" Flags = "00" />
+		<Field FieldId="68" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="RECEIVING INSTITUTION COUNTRY CODE" Flags = "00" />
+		<Field FieldId="69" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="SETTLEMENT INSTITUTION COUNTRY CODE" Flags = "00" />
+		<Field FieldId="70" FieldType="IFA_NUMERIC"   FieldLength="3" FieldDesc="NETWORK MANAGEMENT INFORMATION CODE" Flags = "00" />
+		<Field FieldId="71" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="MESSAGE NUMBER" Flags = "00" />
+		<Field FieldId="72" FieldType="IFA_NUMERIC"   FieldLength="4" FieldDesc="MESSAGE NUMBER LAST" Flags = "00" />
+		<Field FieldId="73" FieldType="IFA_NUMERIC"   FieldLength="6" FieldDesc="DATE ACTION" Flags = "00" />
+		<Field FieldId="74" FieldType="IFA_NUMERIC"   FieldLength="156" FieldDesc="Reconciliation Data"/>
+		<Field FieldId="75" FieldType="IFA_NUMERIC"   FieldLength="90" FieldDesc="Reconciliation Data" Flags = "00" />
+		<Field FieldId="76" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="DEBITS NUMBER" Flags = "00" />
+		<Field FieldId="77" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="DEBITS REVERSAL NUMBER" Flags = "00" />
+		<Field FieldId="78" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="TRANSFER NUMBER" Flags = "00" />
+		<Field FieldId="79" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="TRANSFER REVERSAL NUMBER" Flags = "00" />
+		<Field FieldId="80" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="INQUIRIES NUMBER" Flags = "00" />
+		<Field FieldId="81" FieldType="IFA_NUMERIC"  FieldLength="10" FieldDesc="AUTHORIZATION NUMBER" Flags = "00" />
+		<Field FieldId="82" FieldType="IFA_NUMERIC"  FieldLength="12" FieldDesc="CREDITS, PROCESSING FEE AMOUNT" Flags = "00" />
+		<Field FieldId="83" FieldType="IFA_NUMERIC"  FieldLength="12" FieldDesc="CREDITS, TRANSACTION FEE AMOUNT" Flags = "00" />
+		<Field FieldId="84" FieldType="IFA_NUMERIC"  FieldLength="12" FieldDesc="DEBITS, PROCESSING FEE AMOUNT" Flags = "00" />
+		<Field FieldId="85" FieldType="IFA_NUMERIC"  FieldLength="12" FieldDesc="DEBITS, TRANSACTION FEE AMOUNT" Flags = "00" />
+		<Field FieldId="86" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="CREDITS, AMOUNT" Flags = "00" />
+		<Field FieldId="87" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="CREDITS, REVERSAL AMOUNT" Flags = "00" />
+		<Field FieldId="88" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="DEBITS, AMOUNT" Flags = "00" />
+		<Field FieldId="89" FieldType="IFA_NUMERIC"  FieldLength="16" FieldDesc="DEBITS, REVERSAL AMOUNT" Flags = "00" />
+		<Field FieldId="90" FieldType="IFA_NUMERIC"  FieldLength="42" FieldDesc="ORIGINAL DATA ELEMENTS" Flags = "00" />
+		<Field FieldId="91" FieldType="IF_CHAR"       FieldLength="1" FieldDesc="FILE UPDATE CODE" Flags = "00" />
+		<Field FieldId="92" FieldType="IF_CHAR"       FieldLength="2" FieldDesc="FILE SECURITY CODE" Flags = "00" />
+		<Field FieldId="93" FieldType="IFA_LLCHAR"    FieldLength="11" FieldDesc="RESPONSE INDICATOR" Flags = "10" />
+		<Field FieldId="94" FieldType="IFA_LLCHAR"    FieldLength="11" FieldDesc="SERVICE INDICATOR" Flags = "10" />
+		<Field FieldId="95" FieldType="IF_CHAR"      FieldLength="42" FieldDesc="REPLACEMENT AMOUNTS" Flags = "00" />
+		<Field FieldId="96" FieldType="IFA_LLLBINARY" FieldLength="999" FieldDesc="MESSAGE SECURITY CODE" Flags = "10" />
+		<Field FieldId="97" FieldType="IF_CHAR"   FieldLength="21" FieldDesc="AMOUNT, NET SETTLEMENT" Flags = "10" />
+		<Field FieldId="98" FieldType="IF_CHAR"      FieldLength="25" FieldDesc="PAYEE" Flags = "00" />
+		<Field FieldId="99" FieldType="IFA_LLNUM"    FieldLength="11" FieldDesc="SETTLEMENT INSTITUTION IDENT CODE" Flags = "10" />
+		<Field FieldId="100" FieldType="IFA_LLNUM"    FieldLength="11" FieldDesc="RECEIVING INSTITUTION IDENT CODE" Flags = "00" />
+		<Field FieldId="101" FieldType="IFA_LLCHAR"   FieldLength="17" FieldDesc="FILE NAME" Flags = "00" />
+		<Field FieldId="102" FieldType="IFA_LLCHAR"   FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 1" Flags = "00" />
+		<Field FieldId="103" FieldType="IFA_LLCHAR"   FieldLength="28" FieldDesc="ACCOUNT IDENTIFICATION 2" Flags = "00" />
+		<Field FieldId="104" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RANSACTION DESCRIPTION" Flags = "00" />
+		<Field FieldId="105" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED ISO USE" Flags = "00" />
+		<Field FieldId="106" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED ISO USE" Flags = "00" />
+		<Field FieldId="107" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED ISO USE" Flags = "00" />
+		<Field FieldId="108" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED ISO USE" Flags = "00" />
+		<Field FieldId="109" FieldType="IFA_LLLCHAR" FieldLength="144"  FieldDesc="econciliation Fee Credits" Flags = "00" />
+		<Field FieldId="110" FieldType="IFA_LLLCHAR" FieldLength="144"  FieldDesc="econciliation Fee Debits" Flags = "00" />
+		<Field FieldId="111" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED ISO USE" Flags = "00" />
+		<Field FieldId="112" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="113" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="114" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="115" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="116" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="117" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="118" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="119" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED NATIONAL USE" Flags = "00" />
+		<Field FieldId="120" FieldType="IFA_LLLLCHAR" FieldLength="999" FieldDesc="hetab Add Data" Flags = "00" />
+		<Field FieldId="121" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE" Flags = "00" />
+		<Field FieldId="122" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE" Flags = "00" />
+		<Field FieldId="123" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE--Customer Alert" Flags = "00" />
+		<Field FieldId="124" FieldType="IFA_LLLLCHAR" FieldLength="999" FieldDesc="tatement Data" Flags = "00" />
+		<Field FieldId="125" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE" Flags = "00" />
+		<Field FieldId="126" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE" Flags = "00" />
+		<Field FieldId="127" FieldType="IFA_LLLCHAR" FieldLength="999" FieldDesc="RESERVED PRIVATE USE" Flags = "00" />
+		<Field FieldId="128" FieldType="IFA_BINARY"  FieldLength="4"   FieldDesc="MAC 2" Flags = "00" />
+	</Packager>		
+	<Packager Name="DATASET" MacMethod="FULL" MacSize="0"   BitmapIndex="-1" SecondPartBitmap="0"  FieldCount="2" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IF_CHAR" FieldLength="2" FieldDesc="DATASETID" Flags = "00" />
+		<Field FieldId="1" FieldType="IFA_HHHHCHAR" FieldLength="9999" FieldDesc="ACQ CITY" Flags = "00" />
+	</Packager>		
+	<Packager Name="TABLE71" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IFA_BITMAP" FieldLength="24" FieldDesc="ACQ BMP" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_LLCHAR" FieldLength="50" FieldDesc="ACQ NAME" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_LLCHAR" FieldLength="50" FieldDesc="ACQ CITY" Flags = "00" />
+		<Field FieldId="5" FieldType="IF_CHAR" FieldLength="3" FieldDesc="ACQ PROVINCE" Flags = "00" />
+		<Field FieldId="7" FieldType="IF_CHAR" FieldLength="3" FieldDesc="ACQ COUNTRY" Flags = "00" />
+		<Field FieldId="8" FieldType="IF_CHAR"       FieldLength="16" FieldDesc="ACQ TELL" Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_LLLCHAR"       FieldLength="255" FieldDesc="ACQ WEBSITE" Flags = "00" />
+		<Field FieldId="12" FieldType="IFA_LLCHAR"  FieldLength="99" FieldDesc="ACQ EMAIL" Flags = "00" />
+	</Packager>		
+	<Packager Name="TABLE73" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="8"  FieldCount="16" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IFA_BITMAP" FieldLength="24" FieldDesc="TABLE73 BMP" Flags = "00" />
+		<Field FieldId="1" FieldType="IFA_LLCHAR" FieldLength="33" FieldDesc="FirstName" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_LLCHAR" FieldLength="33" FieldDesc="LastName" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_LLCHAR" FieldLength="25" FieldDesc="Bank Name" Flags = "00" />
+	</Packager>	
+	<Packager Name="TABLE62" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="8" LenFormat="NONE" LenLen="0">
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Trm Type" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="8" FieldDesc="SecurityCode" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_LLLCHAR" FieldLength="68" FieldDesc="Supp Data" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_LLCHAR" FieldLength="32" FieldDesc="MainCrd" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_LLCHAR" FieldLength="32" FieldDesc="SecondCrd" Flags = "00" />			
+	</Packager>		
+
+	<Packager Name="TABLE69" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IFA_BITMAP" FieldLength="24" FieldDesc="TABLE69 BMP" Flags = "00" />
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Indexing Method" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Encrypt Method" Flags = "00" />
+		<Field FieldId="3" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Pin Method" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Key Index" Flags = "00" />
+		<Field FieldId="5" FieldType="IF_CHAR" FieldLength="2" FieldDesc="CSD Method" Flags = "00" />
+	</Packager>		
+	<Packager Name="TABLE74" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IFA_BITMAP" FieldLength="24" FieldDesc="TABLE69 BMP" Flags = "00" />
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Controlling Data" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="8" FieldDesc="Key Index" Flags = "00" />
+		<Field FieldId="3" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Encrypt Method" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="4" FieldDesc="Key Len" Flags = "00" />
+	</Packager>		
+	<Packager Name="TABLE89" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="0" FieldType="IFA_BITMAP" FieldLength="24" FieldDesc="TABLE69 BMP" Flags = "00" />
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Controlling Data" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="8" FieldDesc="Key Index" Flags = "00" />
+		<Field FieldId="3" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Encrypt Method" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="4" FieldDesc="Key Len" Flags = "00" />
+	</Packager>		
+	<Packager Name="TABLE27" MacMethod="FULL" MacSize="0"   BitmapIndex="0"   SecondPartBitmap="0"  FieldCount="22" LenFormat="NONE" LenLen="0">
+		<Field FieldId="1" FieldType="IFA_BINARY" FieldLength="4" FieldDesc="In Cap" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_BINARY" FieldLength="4" FieldDesc="Auth Cap" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="ack cod Len" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="3" FieldDesc="recpt Len" Flags = "00" />
+		<Field FieldId="5" FieldType="IF_CHAR" FieldLength="3" FieldDesc="recpt Len2" Flags = "00" />
+		<Field FieldId="6" FieldType="IF_CHAR" FieldLength="3" FieldDesc="Show Len" Flags = "00" />
+		<Field FieldId="7" FieldType="IF_CHAR" FieldLength="3" FieldDesc="Show Len2" Flags = "00" />
+		<Field FieldId="8" FieldType="IF_CHAR" FieldLength="3" FieldDesc="ICCLen" Flags = "00" />
+		<Field FieldId="9" FieldType="IF_CHAR" FieldLength="1" FieldDesc="Track3 Recover Cap" Flags = "00" />
+		<Field FieldId="10" FieldType="IF_CHAR" FieldLength="1" FieldDesc="Capture Cap" Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_BINARY" FieldLength="1" FieldDesc="Pin Len" Flags = "00" />
+	</Packager>		
+	
+	<Packager Name="AMNT87" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Account Type" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Balance Type" Flags = "00" />
+		<Field FieldId="3" FieldType="IF_CHAR" FieldLength="2" FieldDesc="C or D" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="8" FieldDesc="Currency" Flags = "00" />
+		<Field FieldId="6" FieldType="IF_CHAR" FieldLength="12" FieldDesc="Key Len" Flags = "00" />
+	</Packager>	
+	
+	<Packager Name="AMNT2003" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0">
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Account Type" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="2" FieldDesc="Balance Type" Flags = "00" />
+		<Field FieldId="3" FieldType="IF_CHAR" FieldLength="2" FieldDesc="C or D" Flags = "00" />
+		<Field FieldId="4" FieldType="IF_CHAR" FieldLength="8" FieldDesc="Currency" Flags = "00" />
+		<Field FieldId="5" FieldType="IF_CHAR" FieldLength="1" FieldDesc="Fraction" Flags = "00" />
+		<Field FieldId="6" FieldType="IF_CHAR" FieldLength="12" FieldDesc="Key Len" Flags = "00" />
+	</Packager>		
+	<Packager Name="STMNT2003" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="24"  LenFormat="NONE" LenLen="0">
+		<Field FieldId="1" FieldType="IF_CHAR" FieldLength="8" FieldDesc="Local Date" Flags = "00" />
+		<Field FieldId="2" FieldType="IF_CHAR" FieldLength="6" FieldDesc="Local Time" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_LLCHAR" FieldLength="33" FieldDesc="Trn Type" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="Amount" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="12" FieldDesc="Balance" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="6" FieldDesc="Trace" Flags = "00" />
+	</Packager>		
+
+	<Packager Name="STX10" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Fueling Authorization(1)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Terms of autorhorization" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="VOLAMNT" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="6" FieldDesc="TOTAL" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price" Flags = "00" />
+	</Packager>		
+	<Packager Name="STX11" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Fueling Authorization(2)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Terms of autorhorization" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="VOLAMNT" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="6" FieldDesc="TOTAL" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg1" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price1" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg2" Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price2" Flags = "00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg3" Flags = "00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price3" Flags = "00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg4" Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price4" Flags = "00" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg5" Flags = "00" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price5" Flags = "00" />
+		<Field FieldId="14" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg6" Flags = "00" />
+		<Field FieldId="15" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price6" Flags = "00" />
+	</Packager>		
+	<Packager Name="STX12" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Cancelation Of Fueling Authorization">
+	</Packager>		
+	<Packager Name="STX13" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Pomp Lock">
+	</Packager>		
+	<Packager Name="STX14" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Pomp UnLock">
+	</Packager>		
+	<Packager Name="STX15" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Request Of Dispensing Popmp Status">
+	</Packager>		
+    <Packager Name="STX20" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Request Of Total value Dispensing">
+	</Packager>		
+    <Packager Name="STX21" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="SubUnit Price Indication Data">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Rank Code" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg1" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price1" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg2" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price2" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg3" Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price3" Flags = "00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg4" Flags = "00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price4" Flags = "00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg5" Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price5" Flags = "00" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg6" Flags = "00" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price6" Flags = "00" />
+	</Packager>	
+    <Packager Name="STX01" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Date And Time Data">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Year" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Month" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Day" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Day Of Week" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Hour" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Minute" Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Second" Flags = "00" />
+	</Packager>	
+    <Packager Name="STX60" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Dispencing Pomp Condition(RCV)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Condition" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Contents" Flags = "00" />
+	</Packager>	
+    <Packager Name="STX61" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Dispencing Pomp Status(RCV)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Condition" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="6" FieldDesc="Fueling Vol" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Unit Price Flg1" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="4" FieldDesc="Unit Price1" Flags = "00" />			
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="6" FieldDesc="AMOUNT" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Nozzle Number" Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Products" Flags = "00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Type Of Indication" Flags = "00" />
+	</Packager>	
+	<Packager Name="STX62" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Error Message(RCV)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="2" FieldDesc="Descrimination Code" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Error Code" Flags = "00" />
+	</Packager>	
+	<Packager Name="STX65" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Totaliation Values(RCV)">
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Nozzle 1 Product" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Nozzle 2 Product" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Nozzle 3 Product" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Spare(20)" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 1 Vol" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 1 Amnt" Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 2 Vol" Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 2 Amnt" Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 3 Vol" Flags = "00" />
+		<Field FieldId="8" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 3 Amnt" Flags = "00" />
+		<Field FieldId="9" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 4 Vol" Flags = "00" />
+		<Field FieldId="10" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 4 Amnt" Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 5 Vol" Flags = "00" />
+		<Field FieldId="12" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 5 Amnt" Flags = "00" />
+		<Field FieldId="13" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 6 Vol" Flags = "00" />
+		<Field FieldId="14" FieldType="IFA_NUMERIC" FieldLength="10" FieldDesc="Total 6 Amnt" Flags = "00" />
+	</Packager>	
+	<Packager Name="STX67" MacMethod="FULL" MacSize="0"   BitmapIndex="-1"   SecondPartBitmap="8"  FieldCount="6"  LenFormat="NONE" LenLen="0" Desc="Totaliation Values(RCV)">	
+		<Field FieldId="1" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Switch Code" Flags = "00" />
+		<Field FieldId="2" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Product Code" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_NUMERIC" FieldLength="1" FieldDesc="Desination Code" Flags = "00" />
+	</Packager>	
+	<Packager Name="BIT121" MacMethod="FULL" MacSize="0"   BitmapIndex="1"   SecondPartBitmap="8"  FieldCount="24" LenFormat="NONE" LenLen="0" Desc="Bit 121">
+		<Field FieldId="1" FieldType="IFA_BITMAP"  FieldLength="24" FieldDesc="BIT MAP" Flags ="00" />
+		<Field FieldId="2" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="CompanyNameEN" Flags = "00" />
+		<Field FieldId="3" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Description" Flags = "00" />
+		<Field FieldId="4" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Pay Info"     Flags = "00" />
+		<Field FieldId="5" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="6" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="ChargeCode"     Flags = "00" />
+		<Field FieldId="7" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Bill Date"     Flags = "00" />
+		<Field FieldId="8" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Merchant"     Flags = "00" />
+		<Field FieldId="9" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Company Tel"     Flags = "00" />
+		<Field FieldId="10" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Company Tel"     Flags = "00" />
+		<Field FieldId="11" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="12" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="CompanyNameFA" Flags = "00" />
+		<Field FieldId="13" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="14" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="15" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="16" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="17" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Reserved"     Flags = "00" />
+		<Field FieldId="18" FieldType="IFA_LLCHAR" FieldLength="99" FieldDesc="Charge Info"     Flags = "00" />
+	</Packager>	
+</Packagers>	
+	

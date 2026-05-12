@@ -43,6 +43,9 @@ FieldType parseFieldType(const std::string& typeName) {
     if (type == "IFA_LLLBINARY" || type == "IFB_LLLBINARY") {
         return FieldType::BinaryLll;
     }
+    if (type == "IFA_LLLLBINARY" || type == "IFB_LLLLBINARY") {
+        return FieldType::BinaryLlll;
+    }
     if (type == "IFA_BITMAP") {
         return FieldType::Bitmap;
     }
@@ -64,6 +67,12 @@ FieldType parseFieldType(const std::string& typeName) {
     if (type == "IFA_LLLCHAR") {
         return FieldType::LllChar;
     }
+    if (type == "IFA_LLLLCHAR" || type == "IFA_HHHHCHAR") {
+        return FieldType::LlllChar;
+    }
+    if (type == "IFA_LLLLLLCHAR") {
+        return FieldType::LlllllChar;
+    }
     return FieldType::Unknown;
 }
 
@@ -78,6 +87,7 @@ std::string fieldTypeToString(FieldType type) {
         case FieldType::BinaryFixed:
         case FieldType::BinaryLl:
         case FieldType::BinaryLll:
+        case FieldType::BinaryLlll:
             return "Binary";
         case FieldType::Bitmap:
             return "Bitmap";
@@ -89,6 +99,10 @@ std::string fieldTypeToString(FieldType type) {
             return "LLCHAR";
         case FieldType::LllChar:
             return "LLLCHAR";
+        case FieldType::LlllChar:
+            return "LLLLCHAR";
+        case FieldType::LlllllChar:
+            return "LLLLLLCHAR";
         case FieldType::Unknown:
         default:
             return "Unknown";
@@ -105,6 +119,11 @@ int lengthDigitsForFieldType(FieldType type) {
         case FieldType::LllChar:
         case FieldType::BinaryLll:
             return 3;
+        case FieldType::LlllChar:
+        case FieldType::BinaryLlll:
+            return 4;
+        case FieldType::LlllllChar:
+            return 6;
         default:
             return 0;
     }

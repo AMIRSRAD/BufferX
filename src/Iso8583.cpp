@@ -2,9 +2,37 @@
 
 #include "Hex.h"
 
+#include <algorithm>
 #include <cctype>
 
 namespace {
+std::string formatContextBytes(const std::vector<unsigned char>& data, size_t offset, size_t count = 8) {
+    if (offset >= data.size()) {
+        return "EOF";
+    }
+    const size_t end = std::min(data.size(), offset + count);
+    std::vector<unsigned char> slice(data.begin() + static_cast<long long>(offset),
+                                     data.begin() + static_cast<long long>(end));
+    return toHex(slice, true);
+}
+
+std::string formatDecodeError(const std::string& scope,
+                              const std::vector<unsigned char>& data,
+                              size_t offset,
+                              const std::string& detail) {
+    const size_t remaining = offset < data.size() ? (data.size() - offset) : 0;
+    return scope + " at offset " + std::to_string(offset) + " (remaining " + std::to_string(remaining) +
+           " bytes, context " + formatContextBytes(data, offset) + "): " + detail;
+}
+
+std::string formatEncodeInputError(const std::string& detail) {
+    return "Input error: " + detail;
+}
+
+std::string formatPackagerError(const std::string& detail) {
+    return "Packager definition error: " + detail;
+}
+
 bool parseAsciiLength(const std::vector<unsigned char>& data,
                       size_t offset,
                       int digits,
@@ -134,7 +162,7 @@ bool readFixedField(const std::vector<unsigned char>& data,
         return false;
     }
     if (offset + static_cast<size_t>(length) > data.size()) {
-        error = "Field data exceeds buffer.";
+        error = "Field data exceeds buffer (expected " + std::to_string(length) + " bytes).";
         return false;
     }
     out.assign(data.begin() + static_cast<long long>(offset),
@@ -153,7 +181,7 @@ bool readHexChars(const std::vector<unsigned char>& data,
         return false;
     }
     if (offset + static_cast<size_t>(hexChars) > data.size()) {
-        error = "Hex field exceeds buffer.";
+        error = "Hex field exceeds buffer (expected " + std::to_string(hexChars) + " hex chars).";
         return false;
     }
     std::string hexText;
@@ -183,11 +211,12 @@ bool readVariableField(const std::vector<unsigned char>& data,
     }
     offset += static_cast<size_t>(digits);
     if (maxLength > 0 && static_cast<int>(len) > maxLength) {
-        error = "Field length exceeds declared maximum.";
+        error = "Field length exceeds declared maximum (declared " + std::to_string(len) + ", max " +
+                std::to_string(maxLength) + ").";
         return false;
     }
     if (offset + len > data.size()) {
-        error = "Field data exceeds buffer.";
+        error = "Field data exceeds buffer (declared " + std::to_string(len) + " bytes).";
         return false;
     }
     out.assign(data.begin() + static_cast<long long>(offset),
@@ -207,18 +236,9 @@ std::vector<bool> bitmapToBits(const std::vector<unsigned char>& bitmapBytes) {
     return bits;
 }
 
-std::vector<unsigned char> buildBitmap(const std::map<int, std::string>& fields,
-                                       bool& hasSecondary) {
-    hasSecondary = false;
-    for (const auto& entry : fields) {
-        if (entry.first >= 65) {
-            hasSecondary = true;
-            break;
-        }
-    }
-    const size_t size = hasSecondary ? 16 : 8;
+std::vector<unsigned char> buildBitmap(const std::map<int, std::string>& fields, size_t size, bool setSecondaryBit) {
     std::vector<unsigned char> bitmap(size, 0);
-    if (hasSecondary) {
+    if (setSecondaryBit && !bitmap.empty()) {
         bitmap[0] |= 0x80;
     }
     for (const auto& entry : fields) {
@@ -237,13 +257,231 @@ std::vector<unsigned char> buildBitmap(const std::map<int, std::string>& fields,
     return bitmap;
 }
 
+std::vector<unsigned char> buildBitmapForPackager(const std::map<int, std::string>& fields,
+                                                  const Packager& packager,
+                                                  bool& hasSecondary) {
+    hasSecondary = false;
+    if (packager.bitmapIndex == 0) {
+        const int bitCount = packager.fieldCount > 0 ? packager.fieldCount : 64;
+        const size_t size = static_cast<size_t>((bitCount + 7) / 8);
+        return buildBitmap(fields, size, false);
+    }
+
+    for (const auto& entry : fields) {
+        if (entry.first >= 65) {
+            hasSecondary = true;
+            break;
+        }
+    }
+    const size_t size = hasSecondary ? 16 : 8;
+    return buildBitmap(fields, size, hasSecondary);
+}
+
 std::vector<unsigned char> toAsciiBytes(const std::string& text) {
     return std::vector<unsigned char>(text.begin(), text.end());
 }
 
+bool isNumericType(FieldType type) {
+    return type == FieldType::NumericFixed || type == FieldType::Amount;
+}
+
 bool isBinaryType(FieldType type) {
     return type == FieldType::BinaryFixed || type == FieldType::BinaryLl ||
-           type == FieldType::BinaryLll;
+           type == FieldType::BinaryLll || type == FieldType::BinaryLlll;
+}
+
+std::vector<int> sortedFieldIds(const Packager& packager, bool includeBitmapFields) {
+    std::vector<int> ids;
+    ids.reserve(packager.fields.size());
+    for (const auto& entry : packager.fields) {
+        if (!includeBitmapFields && entry.second.type == FieldType::Bitmap) {
+            continue;
+        }
+        ids.push_back(entry.first);
+    }
+    std::sort(ids.begin(), ids.end());
+    return ids;
+}
+
+std::string sanitizeNumericText(const std::string& text) {
+    std::string sanitized;
+    sanitized.reserve(text.size());
+    for (unsigned char ch : text) {
+        if (std::isdigit(ch)) {
+            sanitized.push_back(static_cast<char>(ch));
+        }
+    }
+    return sanitized;
+}
+
+bool validateNumericText(const std::string& text) {
+    for (unsigned char ch : text) {
+        if (!std::isdigit(ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool decodeFieldValue(const std::vector<unsigned char>& buffer,
+                      size_t& offset,
+                      int fieldId,
+                      const FieldDef& def,
+                      std::string& value,
+                      std::string& error) {
+    const size_t fieldOffset = offset;
+    std::vector<unsigned char> fieldBytes;
+    if (def.variable) {
+        if (isBinaryType(def.type)) {
+            size_t len = 0;
+            if (!parseAsciiLength(buffer, offset, def.lengthDigits, len, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+            offset += static_cast<size_t>(def.lengthDigits);
+            if (def.length > 0 && static_cast<int>(len) > def.length) {
+                error = formatDecodeError("Field " + std::to_string(fieldId),
+                                          buffer,
+                                          fieldOffset,
+                                          "Declared length exceeds maximum (declared " + std::to_string(len) +
+                                              ", max " + std::to_string(def.length) + ").");
+                return false;
+            }
+            const int hexChars = static_cast<int>(len * 2);
+            if (!readHexChars(buffer, offset, hexChars, fieldBytes, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+        } else {
+            if (!readVariableField(buffer, offset, def.lengthDigits, def.length, fieldBytes, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+        }
+    } else {
+        if (isBinaryType(def.type)) {
+            const int hexChars = def.length * 2;
+            if (!readHexChars(buffer, offset, hexChars, fieldBytes, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+        } else {
+            if (!readFixedField(buffer, offset, def.length, fieldBytes, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+        }
+    }
+
+    if (isBinaryType(def.type)) {
+        value = toHex(fieldBytes, true);
+    } else {
+        value.assign(fieldBytes.begin(), fieldBytes.end());
+    }
+    return true;
+}
+
+bool encodeFieldValue(std::vector<unsigned char>& message,
+                      int fieldId,
+                      const FieldDef& def,
+                      const std::string& inputValue,
+                      const EncodeOptions& options,
+                      std::string& error) {
+    std::vector<unsigned char> fieldBytes;
+    std::vector<unsigned char> wireBytes;
+
+    if (isBinaryType(def.type)) {
+        HexParseResult hex = fromHex(inputValue);
+        if (!hex.ok) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + hex.error);
+            return false;
+        }
+        if (def.variable) {
+            if (def.length > 0 && static_cast<int>(hex.bytes.size()) > def.length) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) +
+                                               " exceeds max length (got " +
+                                               std::to_string(hex.bytes.size()) + " bytes, max " +
+                                               std::to_string(def.length) + ").");
+                return false;
+            }
+        } else if (static_cast<int>(hex.bytes.size()) != def.length) {
+            if (options.allowBinaryPadding && static_cast<int>(hex.bytes.size()) < def.length) {
+                hex.bytes.resize(static_cast<size_t>(def.length), 0x00);
+            } else {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) +
+                                               " binary length mismatch (got " +
+                                               std::to_string(hex.bytes.size()) + " bytes, expected " +
+                                               std::to_string(def.length) + ").");
+                return false;
+            }
+        }
+        fieldBytes.assign(hex.bytes.begin(), hex.bytes.end());
+        const std::string hexText = toHex(fieldBytes, true);
+        wireBytes.assign(hexText.begin(), hexText.end());
+    } else {
+        std::string textValue = inputValue;
+        if (isNumericType(def.type)) {
+            if (options.allowNumericSanitize) {
+                textValue = sanitizeNumericText(textValue);
+            }
+            if (!validateNumericText(textValue)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + " expects numeric value.");
+                return false;
+            }
+        }
+        fieldBytes = toAsciiBytes(textValue);
+        wireBytes = fieldBytes;
+    }
+
+    if (def.variable) {
+        if (def.length > 0 && static_cast<int>(fieldBytes.size()) > def.length) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds max length (got " +
+                                           std::to_string(fieldBytes.size()) + " bytes, max " +
+                                           std::to_string(def.length) + ").");
+            return false;
+        }
+        if (isBinaryType(def.type)) {
+            if (!appendAsciiLength(message, fieldBytes.size(), def.lengthDigits, error)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + error);
+                return false;
+            }
+        } else {
+            if (!appendAsciiLength(message, wireBytes.size(), def.lengthDigits, error)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + error);
+                return false;
+            }
+        }
+        message.insert(message.end(), wireBytes.begin(), wireBytes.end());
+        return true;
+    }
+
+    if (def.length <= 0) {
+        error = formatPackagerError("Field " + std::to_string(fieldId) + " has invalid length.");
+        return false;
+    }
+    if (isBinaryType(def.type)) {
+        message.insert(message.end(), wireBytes.begin(), wireBytes.end());
+        return true;
+    }
+    if (def.type == FieldType::NumericFixed || def.type == FieldType::Amount) {
+        if (static_cast<int>(fieldBytes.size()) > def.length) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds fixed length (got " +
+                                           std::to_string(fieldBytes.size()) + " bytes, expected " +
+                                           std::to_string(def.length) + ").");
+            return false;
+        }
+        fieldBytes.insert(fieldBytes.begin(), def.length - fieldBytes.size(), '0');
+    } else if (def.type == FieldType::CharFixed) {
+        if (static_cast<int>(fieldBytes.size()) > def.length) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds fixed length (got " +
+                                           std::to_string(fieldBytes.size()) + " bytes, expected " +
+                                           std::to_string(def.length) + ").");
+            return false;
+        }
+        fieldBytes.insert(fieldBytes.end(), def.length - fieldBytes.size(), ' ');
+    }
+    message.insert(message.end(), fieldBytes.begin(), fieldBytes.end());
+    return true;
 }
 
 } // namespace
@@ -262,7 +500,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         if (options.autoDetectHeader) {
             if (options.header.size <= 0) {
                 result.ok = false;
-                result.error = "Length header size must be positive for auto-detect.";
+                result.error = formatPackagerError("Length header size must be positive for auto-detect.");
                 return result;
             }
             bool detected = false;
@@ -291,14 +529,14 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
             if (options.header.format == LengthFormat::AsciiDigits) {
                 if (!parseAsciiLength(data, offset, options.header.size, messageLength, error)) {
                     result.ok = false;
-                    result.error = error;
+                    result.error = formatDecodeError("Length header", data, offset, error);
                     return result;
                 }
                 result.headerFormat = LengthFormat::AsciiDigits;
             } else if (options.header.format == LengthFormat::BinaryBigEndian) {
                 if (!parseBinaryLength(data, offset, options.header.size, messageLength, error)) {
                     result.ok = false;
-                    result.error = error;
+                    result.error = formatDecodeError("Length header", data, offset, error);
                     return result;
                 }
                 result.headerFormat = LengthFormat::BinaryBigEndian;
@@ -306,7 +544,11 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
             offset += static_cast<size_t>(options.header.size);
             if (offset + messageLength > data.size()) {
                 result.ok = false;
-                result.error = "Declared length exceeds buffer size.";
+                result.error = formatDecodeError("Length header",
+                                                 data,
+                                                 offset - static_cast<size_t>(options.header.size),
+                                                 "Declared message length " + std::to_string(messageLength) +
+                                                     " exceeds available buffer.");
                 return result;
             }
             result.headerDetected = true;
@@ -318,6 +560,69 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         }
     }
 
+    std::string error;
+    if (packager.bitmapIndex < 0) {
+        for (int fieldId : sortedFieldIds(packager, false)) {
+            if (offset >= buffer.size()) {
+                break;
+            }
+            const FieldDef& def = packager.fields.at(fieldId);
+            std::string value;
+            if (!decodeFieldValue(buffer, offset, fieldId, def, value, error)) {
+                result.ok = false;
+                result.error = error;
+                return result;
+            }
+            result.fields[fieldId] = value;
+        }
+        if (offset != buffer.size()) {
+            result.ok = false;
+            result.error = formatDecodeError("Sequential field layout",
+                                             buffer,
+                                             offset,
+                                             "Unread bytes remain after decoding all known fields.");
+            return result;
+        }
+        result.ok = true;
+        return result;
+    }
+
+    if (packager.bitmapIndex == 0) {
+        const int bitCount = packager.fieldCount > 0 ? packager.fieldCount : 64;
+        const int bitmapHexChars = ((bitCount + 7) / 8) * 2;
+        std::vector<unsigned char> bitmapBytes;
+        if (!readHexChars(buffer, offset, bitmapHexChars, bitmapBytes, error)) {
+            result.ok = false;
+            result.error = formatDecodeError("Bitmap", buffer, offset, error);
+            return result;
+        }
+        result.fields[0] = toHex(bitmapBytes, true);
+
+        const std::vector<bool> bits = bitmapToBits(bitmapBytes);
+        const int maxField = std::min(bitCount, static_cast<int>(bits.size() - 1));
+        for (int fieldId = 1; fieldId <= maxField; ++fieldId) {
+            if (!bits[fieldId]) {
+                continue;
+            }
+            auto defIt = packager.fields.find(fieldId);
+            if (defIt == packager.fields.end()) {
+                result.ok = false;
+                result.error = formatPackagerError("Missing definition for field " + std::to_string(fieldId) + ".");
+                return result;
+            }
+
+            std::string value;
+            if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, value, error)) {
+                result.ok = false;
+                result.error = error;
+                return result;
+            }
+            result.fields[fieldId] = value;
+        }
+        result.ok = true;
+        return result;
+    }
+
     int mtiLength = 4;
     auto mtiIt = packager.fields.find(0);
     if (mtiIt != packager.fields.end() && mtiIt->second.length > 0) {
@@ -325,10 +630,9 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
     }
 
     std::vector<unsigned char> mtiBytes;
-    std::string error;
     if (!readFixedField(buffer, offset, mtiLength, mtiBytes, error)) {
         result.ok = false;
-        result.error = "MTI: " + error;
+        result.error = formatDecodeError("MTI", buffer, offset, error);
         return result;
     }
     result.fields[0] = std::string(mtiBytes.begin(), mtiBytes.end());
@@ -337,7 +641,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
     bool hasSecondary = false;
     if (!readHexChars(buffer, offset, 16, bitmapBytes, error)) {
         result.ok = false;
-        result.error = "Bitmap: " + error;
+        result.error = formatDecodeError("Bitmap", buffer, offset, error);
         return result;
     }
     hasSecondary = (bitmapBytes[0] & 0x80) != 0;
@@ -345,7 +649,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         std::vector<unsigned char> secondaryBytes;
         if (!readHexChars(buffer, offset, 16, secondaryBytes, error)) {
             result.ok = false;
-            result.error = "Secondary bitmap: " + error;
+            result.error = formatDecodeError("Secondary bitmap", buffer, offset, error);
             return result;
         }
         bitmapBytes.insert(bitmapBytes.end(), secondaryBytes.begin(), secondaryBytes.end());
@@ -360,62 +664,17 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         auto defIt = packager.fields.find(fieldId);
         if (defIt == packager.fields.end()) {
             result.ok = false;
-            result.error = "Missing definition for field " + std::to_string(fieldId) + ".";
+            result.error = formatPackagerError("Missing definition for field " + std::to_string(fieldId) + ".");
             return result;
         }
 
-        const FieldDef& def = defIt->second;
-        std::vector<unsigned char> fieldBytes;
-        if (def.variable) {
-            if (isBinaryType(def.type)) {
-                size_t len = 0;
-                if (!parseAsciiLength(buffer, offset, def.lengthDigits, len, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-                offset += static_cast<size_t>(def.lengthDigits);
-                if (def.length > 0 && static_cast<int>(len) > def.length) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + " exceeds max length.";
-                    return result;
-                }
-                const int hexChars = static_cast<int>(len * 2);
-                if (!readHexChars(buffer, offset, hexChars, fieldBytes, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            } else {
-                if (!readVariableField(buffer, offset, def.lengthDigits, def.length, fieldBytes, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            }
-        } else {
-            if (isBinaryType(def.type)) {
-                const int hexChars = def.length * 2;
-                if (!readHexChars(buffer, offset, hexChars, fieldBytes, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            } else {
-                if (!readFixedField(buffer, offset, def.length, fieldBytes, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            }
+        std::string value;
+        if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, value, error)) {
+            result.ok = false;
+            result.error = error;
+            return result;
         }
-
-        if (isBinaryType(def.type)) {
-            result.fields[fieldId] = toHex(fieldBytes, true);
-        } else {
-            std::string value(fieldBytes.begin(), fieldBytes.end());
-            result.fields[fieldId] = value;
-        }
+        result.fields[fieldId] = value;
     }
 
     result.ok = true;
@@ -428,10 +687,109 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
     EncodeResult result;
     std::string error;
 
+    std::vector<unsigned char> message;
+    if (packager.bitmapIndex < 0) {
+        const std::vector<int> ids = sortedFieldIds(packager, false);
+        int lastPresentIndex = -1;
+        for (int i = 0; i < static_cast<int>(ids.size()); ++i) {
+            if (fields.find(ids[static_cast<size_t>(i)]) != fields.end()) {
+                lastPresentIndex = i;
+            }
+        }
+        for (int i = 0; i <= lastPresentIndex; ++i) {
+            const int fieldId = ids[static_cast<size_t>(i)];
+            const auto valueIt = fields.find(fieldId);
+            if (valueIt == fields.end()) {
+                result.ok = false;
+                result.error = formatEncodeInputError("Sequential field layout requires field " +
+                                                      std::to_string(fieldId) + ".");
+                return result;
+            }
+            const FieldDef& def = packager.fields.at(fieldId);
+            if (!encodeFieldValue(message, fieldId, def, valueIt->second, options, error)) {
+                result.ok = false;
+                result.error = error;
+                return result;
+            }
+        }
+
+        if (options.header.enabled) {
+            std::vector<unsigned char> prefix;
+            if (options.header.format == LengthFormat::AsciiDigits) {
+                if (!buildAsciiLengthPrefix(message.size(), options.header.size, prefix, error)) {
+                    result.ok = false;
+                    result.error = error;
+                    return result;
+                }
+            } else if (options.header.format == LengthFormat::BinaryBigEndian) {
+                if (!buildBinaryLengthPrefix(message.size(), options.header.size, prefix, error)) {
+                    result.ok = false;
+                    result.error = error;
+                    return result;
+                }
+            }
+            prefix.insert(prefix.end(), message.begin(), message.end());
+            result.bytes = std::move(prefix);
+        } else {
+            result.bytes = std::move(message);
+        }
+        result.ok = true;
+        return result;
+    }
+
+    if (packager.bitmapIndex == 0) {
+        bool hasSecondary = false;
+        const std::vector<unsigned char> bitmap = buildBitmapForPackager(fields, packager, hasSecondary);
+        const std::string bitmapHex = toHex(bitmap, true);
+        message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
+
+        const int maxField = packager.fieldCount > 0 ? packager.fieldCount : 64;
+        for (int fieldId = 1; fieldId <= maxField; ++fieldId) {
+            auto valueIt = fields.find(fieldId);
+            if (valueIt == fields.end()) {
+                continue;
+            }
+            auto defIt = packager.fields.find(fieldId);
+            if (defIt == packager.fields.end()) {
+                result.ok = false;
+                result.error = formatPackagerError("Missing definition for field " + std::to_string(fieldId) + ".");
+                return result;
+            }
+            if (!encodeFieldValue(message, fieldId, defIt->second, valueIt->second, options, error)) {
+                result.ok = false;
+                result.error = error;
+                return result;
+            }
+        }
+
+        if (options.header.enabled) {
+            std::vector<unsigned char> prefix;
+            if (options.header.format == LengthFormat::AsciiDigits) {
+                if (!buildAsciiLengthPrefix(message.size(), options.header.size, prefix, error)) {
+                    result.ok = false;
+                    result.error = error;
+                    return result;
+                }
+            } else if (options.header.format == LengthFormat::BinaryBigEndian) {
+                if (!buildBinaryLengthPrefix(message.size(), options.header.size, prefix, error)) {
+                    result.ok = false;
+                    result.error = error;
+                    return result;
+                }
+            }
+            prefix.insert(prefix.end(), message.begin(), message.end());
+            result.bytes = std::move(prefix);
+        } else {
+            result.bytes = std::move(message);
+        }
+        result.ok = true;
+        return result;
+    }
+
     auto mtiIt = fields.find(0);
     if (mtiIt == fields.end()) {
         result.ok = false;
-        result.error = "Field 0 (MTI) is required.";
+        result.error = formatEncodeInputError("Field 0 (MTI) is required.");
         return result;
     }
 
@@ -441,12 +799,13 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
         mtiLength = mtiDefIt->second.length;
     }
 
-    std::vector<unsigned char> message;
     std::vector<unsigned char> mtiBytes = toAsciiBytes(mtiIt->second);
     if (static_cast<int>(mtiBytes.size()) != mtiLength) {
         if (static_cast<int>(mtiBytes.size()) > mtiLength) {
             result.ok = false;
-            result.error = "MTI length exceeds field definition.";
+            result.error = formatEncodeInputError("MTI length exceeds field definition (got " +
+                                                  std::to_string(mtiBytes.size()) + " bytes, expected " +
+                                                  std::to_string(mtiLength) + ").");
             return result;
         }
         mtiBytes.insert(mtiBytes.begin(), mtiLength - mtiBytes.size(), '0');
@@ -454,7 +813,7 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
     message.insert(message.end(), mtiBytes.begin(), mtiBytes.end());
 
     bool hasSecondary = false;
-    std::vector<unsigned char> bitmap = buildBitmap(fields, hasSecondary);
+    std::vector<unsigned char> bitmap = buildBitmapForPackager(fields, packager, hasSecondary);
     std::string bitmapHex = toHex(bitmap, true);
     message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
 
@@ -467,92 +826,13 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
         auto defIt = packager.fields.find(fieldId);
         if (defIt == packager.fields.end()) {
             result.ok = false;
-            result.error = "Missing definition for field " + std::to_string(fieldId) + ".";
+            result.error = formatPackagerError("Missing definition for field " + std::to_string(fieldId) + ".");
             return result;
         }
-        const FieldDef& def = defIt->second;
-        std::vector<unsigned char> fieldBytes;
-        std::vector<unsigned char> wireBytes;
-
-        if (isBinaryType(def.type)) {
-            HexParseResult hex = fromHex(valueIt->second);
-            if (!hex.ok) {
-                result.ok = false;
-                result.error = "Field " + std::to_string(fieldId) + ": " + hex.error;
-                return result;
-            }
-            if (def.variable) {
-                if (def.length > 0 && static_cast<int>(hex.bytes.size()) > def.length) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + " exceeds max length.";
-                    return result;
-                }
-            } else {
-                if (static_cast<int>(hex.bytes.size()) != def.length) {
-                    if (options.allowBinaryPadding && static_cast<int>(hex.bytes.size()) < def.length) {
-                        hex.bytes.resize(static_cast<size_t>(def.length), 0x00);
-                    } else {
-                        result.ok = false;
-                        result.error = "Field " + std::to_string(fieldId) + " binary length mismatch.";
-                        return result;
-                    }
-                }
-            }
-            fieldBytes.assign(hex.bytes.begin(), hex.bytes.end());
-            std::string hexText = toHex(fieldBytes, true);
-            wireBytes.assign(hexText.begin(), hexText.end());
-        } else {
-            std::string textValue = valueIt->second;
-            fieldBytes = toAsciiBytes(textValue);
-            wireBytes = fieldBytes;
-        }
-
-        if (def.variable) {
-            if (def.length > 0 && static_cast<int>(fieldBytes.size()) > def.length) {
-                result.ok = false;
-                result.error = "Field " + std::to_string(fieldId) + " exceeds max length.";
-                return result;
-            }
-            if (isBinaryType(def.type)) {
-                if (!appendAsciiLength(message, fieldBytes.size(), def.lengthDigits, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            } else {
-                if (!appendAsciiLength(message, wireBytes.size(), def.lengthDigits, error)) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + ": " + error;
-                    return result;
-                }
-            }
-            message.insert(message.end(), wireBytes.begin(), wireBytes.end());
-        } else {
-            if (def.length <= 0) {
-                result.ok = false;
-                result.error = "Field " + std::to_string(fieldId) + " has invalid length.";
-                return result;
-            }
-
-            if (isBinaryType(def.type)) {
-                message.insert(message.end(), wireBytes.begin(), wireBytes.end());
-                continue;
-            } else if (def.type == FieldType::NumericFixed || def.type == FieldType::Amount) {
-                if (static_cast<int>(fieldBytes.size()) > def.length) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + " exceeds fixed length.";
-                    return result;
-                }
-                fieldBytes.insert(fieldBytes.begin(), def.length - fieldBytes.size(), '0');
-            } else if (def.type == FieldType::CharFixed) {
-                if (static_cast<int>(fieldBytes.size()) > def.length) {
-                    result.ok = false;
-                    result.error = "Field " + std::to_string(fieldId) + " exceeds fixed length.";
-                    return result;
-                }
-                fieldBytes.insert(fieldBytes.end(), def.length - fieldBytes.size(), ' ');
-            }
-            message.insert(message.end(), fieldBytes.begin(), fieldBytes.end());
+        if (!encodeFieldValue(message, fieldId, defIt->second, valueIt->second, options, error)) {
+            result.ok = false;
+            result.error = error;
+            return result;
         }
     }
 

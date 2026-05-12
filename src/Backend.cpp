@@ -1,6 +1,8 @@
 #include "Backend.h"
 
+#include "Crypto.h"
 #include "Hex.h"
+#include "Mac.h"
 #include "PackagerLoader.h"
 
 #include <QFile>
@@ -11,6 +13,84 @@
 
 #include <algorithm>
 #include <map>
+
+namespace {
+
+bool isMacFieldDescriptor(const FieldDef& def) {
+    const auto hasToken = [&](const char* token) {
+        const QString desc = QString::fromStdString(def.desc).toUpper();
+        return desc.contains(QString::fromLatin1(token));
+    };
+    return def.id == 64 || def.id == 96 || def.id == 128 || hasToken("AUTHENTICATION CODE") || hasToken("MAC");
+}
+
+bool parseFieldsArray(const QString& fieldsJson,
+                     std::map<int, std::string>& fields,
+                     QString& error) {
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(fieldsJson.toUtf8(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isArray()) {
+        error = QStringLiteral("Invalid fields JSON.");
+        return false;
+    }
+
+    const QJsonArray array = document.array();
+    for (const QJsonValue& value : array) {
+        if (!value.isObject()) {
+            continue;
+        }
+        const QJsonObject obj = value.toObject();
+        const int id = obj.value("id").toInt(-1);
+        if (id < 0) {
+            continue;
+        }
+        const QString fieldValue = obj.value("value").toString();
+        if (fieldValue.isEmpty() && id != 0) {
+            continue;
+        }
+        const QByteArray utf8 = fieldValue.toUtf8();
+        fields[id] = std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
+    }
+
+    return true;
+}
+
+MacPaddingMode parseMacPaddingMode(const QString& mode) {
+    const QString lowered = mode.trimmed().toLower();
+    if (lowered == "m2" || lowered == "iso9797-2" || lowered == "iso9797method2") {
+        return MacPaddingMode::Iso9797Method2;
+    }
+    return MacPaddingMode::Iso9797Method1;
+}
+
+int macOutputBytesForField(const Packager& packager, int macFieldId) {
+    const auto defIt = packager.fields.find(macFieldId);
+    if (defIt != packager.fields.end() && defIt->second.length > 0) {
+        return defIt->second.length;
+    }
+    if (packager.macSize > 0 && (packager.macSize % 2) == 0) {
+        return packager.macSize / 2;
+    }
+    return 8;
+}
+
+bool parsePayloadBytes(const QString& payload, bool inputHex, std::vector<unsigned char>& bytes, QString& error) {
+    if (inputHex) {
+        const HexParseResult parsed = fromHex(payload.toStdString());
+        if (!parsed.ok) {
+            error = QString::fromStdString(parsed.error);
+            return false;
+        }
+        bytes = parsed.bytes;
+        return true;
+    }
+
+    const QByteArray utf8 = payload.toUtf8();
+    bytes.assign(utf8.begin(), utf8.end());
+    return true;
+}
+
+} // namespace
 
 Backend::Backend(QObject* parent) : QObject(parent) {}
 
@@ -93,6 +173,7 @@ QString Backend::packagerFieldsJson(const QString& packagerName) const {
     std::sort(ids.begin(), ids.end());
 
     QJsonArray fields;
+    QJsonArray macFieldIds;
     for (int id : ids) {
         const FieldDef& def = packager->fields.at(id);
         QJsonObject fieldObj;
@@ -103,6 +184,9 @@ QString Backend::packagerFieldsJson(const QString& packagerName) const {
         fieldObj["variable"] = def.variable;
         fieldObj["lengthDigits"] = def.lengthDigits;
         fields.append(fieldObj);
+        if (packager->macSize > 0 && isMacFieldDescriptor(def)) {
+            macFieldIds.append(def.id);
+        }
     }
 
     QJsonObject obj;
@@ -111,6 +195,12 @@ QString Backend::packagerFieldsJson(const QString& packagerName) const {
     obj["lenLen"] = packager->lenLen;
     obj["lenFormat"] = QString::fromStdString(packager->lenFormat);
     obj["fieldCount"] = packager->fieldCount;
+    obj["macMethod"] = QString::fromStdString(packager->macMethod);
+    obj["macSize"] = packager->macSize;
+    obj["macConfigured"] = packager->macSize > 0;
+    obj["macSupported"] = packager->macSize > 0;
+    obj["macAutoEncodeSupported"] = false;
+    obj["macFieldIds"] = macFieldIds;
     obj["fields"] = fields;
     return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
 }
@@ -249,29 +339,10 @@ QString Backend::encodeBuffer(const QString& packagerName,
         return jsonError(QStringLiteral("Packager not found: %1").arg(packagerName));
     }
 
-    QJsonParseError parseError;
-    QJsonDocument document = QJsonDocument::fromJson(fieldsJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isArray()) {
-        return jsonError(QStringLiteral("Invalid fields JSON."));
-    }
-
     std::map<int, std::string> fields;
-    const QJsonArray array = document.array();
-    for (const QJsonValue& value : array) {
-        if (!value.isObject()) {
-            continue;
-        }
-        QJsonObject obj = value.toObject();
-        const int id = obj.value("id").toInt(-1);
-        const QString fieldValue = obj.value("value").toString();
-        if (id < 0) {
-            continue;
-        }
-        if (fieldValue.isEmpty() && id != 0) {
-            continue;
-        }
-        const QByteArray utf8 = fieldValue.toUtf8();
-        fields[id] = std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
+    QString parseError;
+    if (!parseFieldsArray(fieldsJson, fields, parseError)) {
+        return jsonError(parseError);
     }
 
     EncodeOptions options;
@@ -299,6 +370,143 @@ QString Backend::encodeBuffer(const QString& packagerName,
     obj["raw"] = outputHex ? QString::fromStdString(rawHex) : rawText;
     obj["rawHex"] = QString::fromStdString(rawHex);
     obj["length"] = static_cast<int>(encoded.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::calculateMacForFields(const QString& packagerName,
+                                       const QString& fieldsJson,
+                                       int macFieldId,
+                                       const QString& keyHex,
+                                       bool lengthHeaderEnabled,
+                                       const QString& lengthMode,
+                                       int lengthSize,
+                                       const QString& paddingMode) {
+    const Packager* packager = findPackager(packagerName);
+    if (!packager) {
+        return jsonError(QStringLiteral("Packager not found: %1").arg(packagerName));
+    }
+    if (macFieldId < 0) {
+        return jsonError(QStringLiteral("MAC field id must be non-negative."));
+    }
+
+    std::map<int, std::string> fields;
+    QString parseError;
+    if (!parseFieldsArray(fieldsJson, fields, parseError)) {
+        return jsonError(parseError);
+    }
+    fields.erase(macFieldId);
+
+    EncodeOptions options;
+    options.header.enabled = lengthHeaderEnabled;
+    options.header.format = parseLengthFormat(lengthMode);
+    options.header.size = lengthSize;
+    if (lengthHeaderEnabled && options.header.format == LengthFormat::None) {
+        return jsonError(QStringLiteral("Length header mode must be ascii or binary."));
+    }
+
+    const EncodeResult encoded = Iso8583Codec::encode(fields, *packager, options);
+    if (!encoded.ok) {
+        return jsonError(QString::fromStdString(encoded.error));
+    }
+
+    const int outputBytes = macOutputBytesForField(*packager, macFieldId);
+    const MacResult mac = MacEngine::calculateAnsiX919(encoded.bytes,
+                                                       keyHex.toStdString(),
+                                                       parseMacPaddingMode(paddingMode),
+                                                       outputBytes);
+    if (!mac.ok) {
+        return jsonError(QString::fromStdString(mac.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["fieldId"] = macFieldId;
+    obj["outputBytes"] = outputBytes;
+    obj["payloadHex"] = QString::fromStdString(toHex(encoded.bytes, true));
+    obj["macHex"] = QString::fromStdString(toHex(mac.macBytes, true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::verifyMacForFields(const QString& packagerName,
+                                    const QString& fieldsJson,
+                                    int macFieldId,
+                                    const QString& keyHex,
+                                    bool lengthHeaderEnabled,
+                                    const QString& lengthMode,
+                                    int lengthSize,
+                                    const QString& paddingMode) {
+    std::map<int, std::string> fields;
+    QString parseError;
+    if (!parseFieldsArray(fieldsJson, fields, parseError)) {
+        return jsonError(parseError);
+    }
+
+    const auto providedIt = fields.find(macFieldId);
+    if (providedIt == fields.end() || providedIt->second.empty()) {
+        return jsonError(QStringLiteral("MAC field %1 is empty.").arg(macFieldId));
+    }
+
+    const QString calculatedText = calculateMacForFields(packagerName,
+                                                         fieldsJson,
+                                                         macFieldId,
+                                                         keyHex,
+                                                         lengthHeaderEnabled,
+                                                         lengthMode,
+                                                         lengthSize,
+                                                         paddingMode);
+    const QJsonObject calc = QJsonDocument::fromJson(calculatedText.toUtf8()).object();
+    if (!calc.value("ok").toBool(false)) {
+        return calculatedText;
+    }
+
+    const QString expected = calc.value("macHex").toString().toUpper();
+    const QString provided = QString::fromStdString(providedIt->second).trimmed().toUpper();
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["match"] = (expected == provided);
+    obj["fieldId"] = macFieldId;
+    obj["providedMacHex"] = provided;
+    obj["expectedMacHex"] = expected;
+    obj["payloadHex"] = calc.value("payloadHex").toString();
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::transformCrypto(const QString& algorithm,
+                                 const QString& operation,
+                                 const QString& payload,
+                                 bool inputHex,
+                                 const QString& keyHex,
+                                 const QString& ivHex,
+                                 bool usePadding) {
+    std::vector<unsigned char> bytes;
+    QString error;
+    if (!parsePayloadBytes(payload, inputHex, bytes, error)) {
+        return jsonError(error);
+    }
+
+    const QString op = operation.trimmed().toLower();
+    if (op != "encrypt" && op != "decrypt") {
+        return jsonError(QStringLiteral("Operation must be encrypt or decrypt."));
+    }
+
+    const CryptoResult transformed = CryptoEngine::transform(algorithm.toStdString(),
+                                                             op == "encrypt",
+                                                             bytes,
+                                                             keyHex.toStdString(),
+                                                             ivHex.toStdString(),
+                                                             usePadding);
+    if (!transformed.ok) {
+        return jsonError(QString::fromStdString(transformed.error));
+    }
+
+    const QByteArray utf8(reinterpret_cast<const char*>(transformed.bytes.data()),
+                          static_cast<int>(transformed.bytes.size()));
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["rawHex"] = QString::fromStdString(toHex(transformed.bytes, true));
+    obj["text"] = QString::fromUtf8(utf8);
+    obj["length"] = static_cast<int>(transformed.bytes.size());
     return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
 }
 

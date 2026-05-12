@@ -13,16 +13,16 @@ ApplicationWindow {
     title: "BufferX - ISO 8583 Studio"
     font.family: "Segoe UI"
 
-    property color ink: "#E6EDF3"
-    property color muted: "#9AA7B2"
+    property color ink: "#FFFFFF"
+    property color muted: "#D2DAE3"
     property color accent: "#4DD4C6"
-    property color accentSoft: "#1C3A3A"
+    property color accentSoft: "#244B49"
     property color accentCool: "#88F2D0"
-    property color card: "#11161C"
-    property color cardAlt: "#171D24"
-    property color border: "#27313A"
-    property color backgroundTop: "#0D1117"
-    property color backgroundBottom: "#0B0F14"
+    property color card: "#17202A"
+    property color cardAlt: "#1E2833"
+    property color border: "#425160"
+    property color backgroundTop: "#10161E"
+    property color backgroundBottom: "#0E141B"
     property int fieldRowHeight: 37
     property int fieldRowSpacing: 2
     property int fieldLabelWidth: 440
@@ -32,20 +32,35 @@ ApplicationWindow {
 
     property var packagerList: []
     property var fieldDefs: []
+    property var packagerMacFieldIds: []
     property string activePackager: ""
+    property string packagerMacMethod: ""
+    property int packagerMacSize: 0
+    property bool packagerMacSupported: false
     property string lastError: ""
+    property string macResultHex: ""
+    property string macVerifyStatus: ""
     property real intro: 0
     property string packagerPathValue: ""
     property int selectedBufferIndex: -1
+    property string currentBufferPath: ""
     property int lastEncodingIndex: 0
     property bool encodingGuard: false
     property bool settingsOpen: false
+    property bool macOpen: false
+    property bool cryptoOpen: false
     property int settingsWidth: 320
     property int cursorLine: 1
     property int cursorCol: 1
     property int cursorPos: 1
     property int selectionLen: 0
     property string activeEditor: "buffer"
+
+    onSelectedBufferIndexChanged: {
+        if (bufferSwitcher && bufferSwitcher.currentIndex !== selectedBufferIndex) {
+            bufferSwitcher.currentIndex = selectedBufferIndex
+        }
+    }
 
     component AppButton: Button {
         id: control
@@ -54,7 +69,7 @@ ApplicationWindow {
         hoverEnabled: true
         background: Rectangle {
             radius: 8
-            color: control.down ? "#1C2933" : (control.hovered ? "#1A232D" : "#141A21")
+            color: control.down ? "#253545" : (control.hovered ? "#223140" : "#1B2530")
             border.color: root.border
             border.width: 1
         }
@@ -110,6 +125,15 @@ ApplicationWindow {
             out += hex
         }
         return out
+    }
+
+    function fieldIndexById(idValue) {
+        for (var i = 0; i < fieldModel.count; ++i) {
+            if (fieldModel.get(i).fieldId === idValue) {
+                return i
+            }
+        }
+        return -1
     }
 
     function isHexLike(text) {
@@ -337,7 +361,12 @@ ApplicationWindow {
         }
         for (var i = 0; i < bufferModel.count; ++i) {
             if (bufferModel.get(i).path === path) {
+                bufferModel.set(i, {
+                    name: baseName(path),
+                    path: path
+                })
                 selectedBufferIndex = i
+                currentBufferPath = path
                 return
             }
         }
@@ -346,6 +375,44 @@ ApplicationWindow {
             path: path
         })
         selectedBufferIndex = bufferModel.count - 1
+        currentBufferPath = path
+    }
+
+    function openBufferFile() {
+        var path = backend.chooseBufferOpenFile()
+        if (path && path.length) {
+            loadBufferFromPath(path)
+        }
+    }
+
+    function saveBufferAs() {
+        var path = backend.chooseBufferSaveFile()
+        if (path && path.length) {
+            saveBufferToPath(path)
+        }
+    }
+
+    function saveCurrentBuffer() {
+        if (currentBufferPath && currentBufferPath.length) {
+            saveBufferToPath(currentBufferPath)
+            return
+        }
+        saveBufferAs()
+    }
+
+    function selectBufferAt(index) {
+        if (index < 0 || index >= bufferModel.count) {
+            return
+        }
+        var entry = bufferModel.get(index)
+        selectedBufferIndex = index
+        loadBufferFromPath(entry.path)
+    }
+
+    function closeToolPanels(exceptName) {
+        settingsOpen = exceptName === "settings" ? settingsOpen : false
+        macOpen = exceptName === "mac" ? macOpen : false
+        cryptoOpen = exceptName === "crypto" ? cryptoOpen : false
     }
 
     function toggleFieldHex(index) {
@@ -394,9 +461,18 @@ ApplicationWindow {
             return
         }
         fieldDefs = response.fields
+        packagerMacFieldIds = response.macFieldIds || []
+        packagerMacMethod = response.macMethod || ""
+        packagerMacSize = response.macSize || 0
+        packagerMacSupported = response.macSupported === true
         if (response.lenLen > 0) {
             headerSize.value = response.lenLen
         }
+        if (packagerMacFieldIds.length > 0) {
+            macFieldId.value = packagerMacFieldIds[0]
+        }
+        macResultHex = ""
+        macVerifyStatus = ""
         rebuildFieldModel()
     }
 
@@ -522,6 +598,7 @@ ApplicationWindow {
             return
         }
         decodeInput.text = response.raw || ""
+        decodePayload()
     }
 
     function encodePayloadWithPadding() {
@@ -561,6 +638,7 @@ ApplicationWindow {
             return
         }
         decodeInput.text = response.raw || ""
+        decodePayload()
     }
 
     function encodePayloadWithNumericSanitize() {
@@ -600,6 +678,7 @@ ApplicationWindow {
             return
         }
         decodeInput.text = response.raw || ""
+        decodePayload()
     }
 
     function addFieldById(idValue) {
@@ -633,6 +712,126 @@ ApplicationWindow {
         })
     }
 
+    function buildFieldPayload(excludeFieldId) {
+        var payload = []
+        for (var i = 0; i < fieldModel.count; ++i) {
+            var entry = fieldModel.get(i)
+            if (excludeFieldId >= 0 && entry.fieldId === excludeFieldId) {
+                continue
+            }
+            var valueText = entry.value
+            if (entry.showHex && !isBinaryField(entry.fieldId)) {
+                var converted = parseJsonSafe(backend.hexToUtf8(entry.value))
+                if (!converted.ok) {
+                    lastError = converted.error || "Invalid hex input."
+                    return null
+                }
+                valueText = converted.text
+            }
+            if (entry.fieldId === 35) {
+                valueText = valueText.split("D").join("=")
+            }
+            payload.push({ id: entry.fieldId, value: valueText })
+        }
+        return payload
+    }
+
+    function calculateMac() {
+        lastError = ""
+        macVerifyStatus = ""
+        if (!packagerMacSupported) {
+            lastError = "Current packager has no configured MAC metadata."
+            return
+        }
+        var payload = buildFieldPayload(macFieldId.value)
+        if (!payload) {
+            return
+        }
+        var response = parseJsonSafe(backend.calculateMacForFields(
+                                         activePackager,
+                                         JSON.stringify(payload),
+                                         macFieldId.value,
+                                         macKey.text,
+                                         macIncludeHeader.checked,
+                                         headerMode.currentText.toLowerCase(),
+                                         headerSize.value,
+                                         macPadding.paddingModeValue))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        macResultHex = response.macHex || ""
+    }
+
+    function verifyMac() {
+        lastError = ""
+        var payload = buildFieldPayload(-1)
+        if (!payload) {
+            return
+        }
+        var response = parseJsonSafe(backend.verifyMacForFields(
+                                         activePackager,
+                                         JSON.stringify(payload),
+                                         macFieldId.value,
+                                         macKey.text,
+                                         macIncludeHeader.checked,
+                                         headerMode.currentText.toLowerCase(),
+                                         headerSize.value,
+                                         macPadding.paddingModeValue))
+        if (!response.ok) {
+            lastError = response.error
+            macVerifyStatus = ""
+            return
+        }
+        macResultHex = response.expectedMacHex || macResultHex
+        macVerifyStatus = response.match ? "Match" : "Mismatch"
+    }
+
+    function applyMacToField() {
+        if (!macResultHex.length) {
+            lastError = "Calculate a MAC first."
+            return
+        }
+        var idx = fieldIndexById(macFieldId.value)
+        if (idx >= 0) {
+            fieldModel.set(idx, { "value": macResultHex, "showHex": false })
+            return
+        }
+
+        var def = findFieldDef(macFieldId.value)
+        var insertIndex = fieldModel.count
+        for (var i = 0; i < fieldModel.count; ++i) {
+            if (fieldModel.get(i).fieldId > macFieldId.value) {
+                insertIndex = i
+                break
+            }
+        }
+        fieldModel.insert(insertIndex, {
+            fieldId: macFieldId.value,
+            desc: def ? def.desc : "MAC field",
+            type: def ? def.type : "Binary",
+            value: macResultHex,
+            showHex: false
+        })
+    }
+
+    function runCrypto(operation) {
+        lastError = ""
+        var response = parseJsonSafe(backend.transformCrypto(
+                                         cryptoAlgorithm.currentText,
+                                         operation,
+                                         cryptoInput.text,
+                                         cryptoInputMode.currentIndex === 1,
+                                         cryptoKey.text,
+                                         cryptoIv.text,
+                                         cryptoPadding.checked))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        cryptoOutput.text = cryptoOutputMode.currentIndex === 0 ? (response.text || "") : (response.rawHex || "")
+    }
+
     function saveBufferToPath(path) {
         lastError = ""
         var payload = []
@@ -655,6 +854,7 @@ ApplicationWindow {
             return
         }
         addBufferEntry(path)
+        lastError = ""
     }
 
     function loadBufferFromPath(path) {
@@ -702,6 +902,8 @@ ApplicationWindow {
             }
         }
         addBufferEntry(path)
+        currentBufferPath = path
+        lastError = ""
     }
 
     Component.onCompleted: {
@@ -880,8 +1082,8 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: false
                         Layout.preferredHeight: 150
-                        Layout.maximumHeight: 180
-                        Layout.minimumHeight: 130
+                        Layout.maximumHeight: 170
+                        Layout.minimumHeight: 140
                         spacing: 12
 
                         Rectangle {
@@ -913,7 +1115,7 @@ ApplicationWindow {
                                         padding: 8
                                         background: Rectangle {
                                             radius: 8
-                                            color: bufferEncoding.hovered ? "#1A232D" : "#141A21"
+                                            color: bufferEncoding.hovered ? "#223140" : "#1B2530"
                                             border.color: border
                                             border.width: 1
                                         }
@@ -991,8 +1193,17 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     placeholderText: "Paste or build an ISO 8583 buffer here..."
+                                    color: ink
+                                    font.pixelSize: 14
+                                    placeholderTextColor: muted
                                     wrapMode: TextArea.Wrap
                                     selectByMouse: true
+                                    background: Rectangle {
+                                        radius: 8
+                                        color: "#121922"
+                                        border.color: border
+                                        border.width: 1
+                                    }
                                     onCursorPositionChanged: updateCursorStatus()
                                     onSelectionStartChanged: updateCursorStatus()
                                     onSelectionEndChanged: updateCursorStatus()
@@ -1002,6 +1213,10 @@ ApplicationWindow {
                                             activeEditor = "buffer"
                                             updateCursorStatus()
                                         }
+                                    }
+                                    TapHandler {
+                                        acceptedButtons: Qt.LeftButton
+                                        onDoubleTapped: decodePayload()
                                     }
                                 }
                             }
@@ -1055,7 +1270,7 @@ ApplicationWindow {
                                 width: GridView.view.cellWidth - 6
                                 height: fieldRowHeight
                                 radius: 10
-                                color: index % 2 === 0 ? "#121820" : "#151C24"
+                                color: index % 2 === 0 ? "#18222D" : "#1C2733"
                                 border.color: border
                                 RowLayout {
                                     anchors.fill: parent
@@ -1080,7 +1295,7 @@ ApplicationWindow {
                                         spacing: 0
                                         Label {
                                             text: desc.length ? desc : "Field " + fieldId
-                                            font.pixelSize: 11
+                                            font.pixelSize: 12
                                             color: ink
                                             elide: Text.ElideRight
                                             horizontalAlignment: Text.AlignLeft
@@ -1088,7 +1303,7 @@ ApplicationWindow {
                                         }
                                         Label {
                                             text: type
-                                            font.pixelSize: 9
+                                            font.pixelSize: 10
                                             color: muted
                                             horizontalAlignment: Text.AlignLeft
                                             Layout.fillWidth: true
@@ -1099,13 +1314,15 @@ ApplicationWindow {
                                         Layout.preferredHeight: 22
                                         Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                                         text: value
-                                        font.pixelSize: 11
+                                        font.pixelSize: 14
+                                        color: ink
+                                        placeholderTextColor: muted
                                         horizontalAlignment: TextInput.AlignLeft
                                         placeholderText: showHex ? "Hex" : "Value"
                                         selectByMouse: true
                                         background: Rectangle {
                                             radius: 6
-                                            color: "#0F1318"
+                                            color: "#111821"
                                             border.color: hasNonAscii(value) && !showHex ? "#E9A645"
                                                 : (hasEdgeSpace(value) ? "#4DD4C6" : border)
                                         }
@@ -1180,7 +1397,7 @@ ApplicationWindow {
     Rectangle {
         id: settingsPanel
         width: settingsWidth
-        height: 300
+        height: 430
         radius: 18
         color: card
         border.color: border
@@ -1247,7 +1464,7 @@ ApplicationWindow {
                 padding: 8
                 background: Rectangle {
                     radius: 8
-                    color: packagerCombo.hovered ? "#1A232D" : "#141A21"
+                    color: packagerCombo.hovered ? "#223140" : "#1B2530"
                     border.color: border
                     border.width: 1
                 }
@@ -1273,6 +1490,94 @@ ApplicationWindow {
                 onActivated: {
                     activePackager = currentText
                     loadPackagerFields()
+                }
+            }
+
+            Rectangle {
+                height: 1
+                color: border
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: "Buffers"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Open"
+                    Layout.fillWidth: true
+                    onClicked: openBufferFile()
+                }
+                AppButton {
+                    text: "Save"
+                    Layout.fillWidth: true
+                    onClicked: saveCurrentBuffer()
+                }
+                AppButton {
+                    text: "Save As"
+                    Layout.fillWidth: true
+                    onClicked: saveBufferAs()
+                }
+            }
+
+            ComboBox {
+                id: bufferSwitcher
+                model: bufferModel
+                textRole: "name"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+                enabled: bufferModel.count > 0
+                currentIndex: selectedBufferIndex
+                padding: 8
+                background: Rectangle {
+                    radius: 8
+                    color: bufferSwitcher.hovered ? "#223140" : "#1B2530"
+                    border.color: border
+                    border.width: 1
+                }
+                contentItem: Label {
+                    text: bufferSwitcher.displayText
+                    font.pixelSize: 12
+                    color: ink
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignLeft
+                    elide: Text.ElideRight
+                }
+                indicator: Rectangle {
+                    width: 10
+                    height: 10
+                    radius: 2
+                    color: "transparent"
+                    border.color: muted
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                }
+                onActivated: selectBufferAt(currentIndex)
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                radius: 8
+                color: "#0F1318"
+                border.color: border
+                Label {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    verticalAlignment: Text.AlignVCenter
+                    text: currentBufferPath.length ? currentBufferPath : "No buffer file selected"
+                    font.pixelSize: 11
+                    color: currentBufferPath.length ? ink : muted
+                    elide: Text.ElideMiddle
                 }
             }
 
@@ -1318,7 +1623,7 @@ ApplicationWindow {
                     padding: 8
                     background: Rectangle {
                         radius: 8
-                        color: headerMode.hovered ? "#1A232D" : "#141A21"
+                        color: headerMode.hovered ? "#223140" : "#1B2530"
                         border.color: border
                         border.width: 1
                     }
@@ -1348,6 +1653,342 @@ ApplicationWindow {
                     to: 8
                     value: 4
                     enabled: headerEnabled.checked || headerAuto.checked
+                }
+            }
+
+        }
+    }
+
+    Rectangle {
+        id: macPanel
+        width: 360
+        height: 360
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: macButton.x
+        y: macOpen ? (macButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "MAC"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            Label {
+                text: packagerMacSupported
+                      ? ("Method " + (packagerMacMethod.length ? packagerMacMethod : "n/a") + "  Size " + packagerMacSize)
+                      : "No MAC metadata in current packager"
+                font.pixelSize: 11
+                color: muted
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                SpinBox {
+                    id: macFieldId
+                    from: 0
+                    to: 128
+                    value: 64
+                    editable: true
+                    enabled: packagerMacSupported
+                    Layout.preferredWidth: 90
+                }
+                ComboBox {
+                    id: macPadding
+                    model: ["ISO9797 M1", "ISO9797 M2"]
+                    property string paddingModeValue: currentIndex === 1 ? "m2" : "m1"
+                    currentIndex: 0
+                    enabled: packagerMacSupported
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    padding: 8
+                    background: Rectangle {
+                        radius: 8
+                        color: macPadding.hovered ? "#223140" : "#1B2530"
+                        border.color: border
+                        border.width: 1
+                    }
+                    contentItem: Label {
+                        text: macPadding.displayText
+                        font.pixelSize: 12
+                        color: ink
+                        verticalAlignment: Text.AlignVCenter
+                        horizontalAlignment: Text.AlignLeft
+                        elide: Text.ElideRight
+                    }
+                    indicator: Rectangle {
+                        width: 10
+                        height: 10
+                        radius: 2
+                        color: "transparent"
+                        border.color: muted
+                        border.width: 1
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                    }
+                }
+            }
+
+            TextField {
+                id: macKey
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                enabled: packagerMacSupported
+                placeholderText: "MAC key hex (8, 16, or 24 bytes)"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            CheckBox {
+                id: macIncludeHeader
+                text: "Include length header in MAC input"
+                checked: false
+                enabled: packagerMacSupported
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Calc"
+                    enabled: packagerMacSupported
+                    Layout.fillWidth: true
+                    onClicked: calculateMac()
+                }
+                AppButton {
+                    text: "Verify"
+                    enabled: packagerMacSupported
+                    Layout.fillWidth: true
+                    onClicked: verifyMac()
+                }
+                AppButton {
+                    text: "Apply"
+                    enabled: packagerMacSupported
+                    Layout.fillWidth: true
+                    onClicked: applyMacToField()
+                }
+            }
+
+            TextField {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                readOnly: true
+                text: macResultHex
+                placeholderText: "Calculated MAC"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            Label {
+                text: macVerifyStatus
+                font.pixelSize: 11
+                color: macVerifyStatus === "Match" ? "#63E6BE"
+                      : (macVerifyStatus === "Mismatch" ? "#E18A74" : muted)
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Rectangle {
+        id: cryptoPanel
+        width: 420
+        height: 460
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: cryptoButton.x
+        y: cryptoOpen ? (cryptoButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "Crypto"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            ComboBox {
+                id: cryptoAlgorithm
+                model: ["DES-ECB", "DES-CBC", "3DES-ECB", "3DES-CBC", "AES-128-ECB", "AES-128-CBC", "AES-256-ECB", "AES-256-CBC"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+                padding: 8
+                background: Rectangle {
+                    radius: 8
+                    color: cryptoAlgorithm.hovered ? "#223140" : "#1B2530"
+                    border.color: border
+                    border.width: 1
+                }
+                contentItem: Label {
+                    text: cryptoAlgorithm.displayText
+                    font.pixelSize: 12
+                    color: ink
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignLeft
+                    elide: Text.ElideRight
+                }
+                indicator: Rectangle {
+                    width: 10
+                    height: 10
+                    radius: 2
+                    color: "transparent"
+                    border.color: muted
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ComboBox {
+                    id: cryptoInputMode
+                    model: ["Text In", "Hex In"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+                ComboBox {
+                    id: cryptoOutputMode
+                    model: ["Text Out", "Hex Out"]
+                    currentIndex: 1
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+            }
+
+            TextField {
+                id: cryptoKey
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "Key hex"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: cryptoIv
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "IV hex (CBC only)"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            CheckBox {
+                id: cryptoPadding
+                text: "Use block padding"
+                checked: true
+                Layout.fillWidth: true
+            }
+
+            TextArea {
+                id: cryptoInput
+                Layout.fillWidth: true
+                Layout.preferredHeight: 110
+                placeholderText: "Input text or hex"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Encrypt"
+                    Layout.fillWidth: true
+                    onClicked: runCrypto("encrypt")
+                }
+                AppButton {
+                    text: "Decrypt"
+                    Layout.fillWidth: true
+                    onClicked: runCrypto("decrypt")
+                }
+            }
+
+            TextArea {
+                id: cryptoOutput
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                readOnly: true
+                placeholderText: "Output"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
                 }
             }
         }
@@ -1405,6 +2046,52 @@ ApplicationWindow {
         padding: 6
         font.pixelSize: 11
         z: 11
-        onClicked: settingsOpen = !settingsOpen
+        onClicked: {
+            settingsOpen = !settingsOpen
+            if (settingsOpen) {
+                macOpen = false
+                cryptoOpen = false
+            }
+        }
+    }
+
+    AppButton {
+        id: macButton
+        text: macOpen ? "MAC v" : "MAC >"
+        anchors.left: settingsButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            macOpen = !macOpen
+            if (macOpen) {
+                settingsOpen = false
+                cryptoOpen = false
+            }
+        }
+    }
+
+    AppButton {
+        id: cryptoButton
+        text: cryptoOpen ? "Crypto v" : "Crypto >"
+        anchors.left: macButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            cryptoOpen = !cryptoOpen
+            if (cryptoOpen) {
+                settingsOpen = false
+                macOpen = false
+            }
+        }
     }
 }

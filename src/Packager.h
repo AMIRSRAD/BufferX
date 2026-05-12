@@ -10,11 +10,14 @@ enum class FieldType {
     BinaryFixed,
     BinaryLl,
     BinaryLll,
+    BinaryLlll,
     Bitmap,
     LlNum,
     LllNum,
     LlChar,
     LllChar,
+    LlllChar,
+    LlllllChar,
     Unknown
 };
 

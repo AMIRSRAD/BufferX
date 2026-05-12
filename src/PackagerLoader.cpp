@@ -1,95 +1,154 @@
 #include "PackagerLoader.h"
 
-#include <regex>
-#include <unordered_map>
+#include <QByteArray>
+#include <QXmlStreamAttributes>
+#include <QXmlStreamReader>
 
 namespace {
-std::unordered_map<std::string, std::string> parseAttributes(const std::string& tag) {
-    std::unordered_map<std::string, std::string> attrs;
-    static const std::regex attrRe(R"((\w+)\s*=\s*\"([^\"]*)\")");
-    auto begin = std::sregex_iterator(tag.begin(), tag.end(), attrRe);
-    auto end = std::sregex_iterator();
-    for (auto it = begin; it != end; ++it) {
-        attrs[it->str(1)] = it->str(2);
-    }
-    return attrs;
+std::string toStdString(QStringView value) {
+    const QByteArray utf8 = value.toUtf8();
+    return std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
 }
 
-int readIntAttr(const std::unordered_map<std::string, std::string>& attrs,
-                const std::string& key,
-                int fallback) {
-    auto it = attrs.find(key);
-    if (it == attrs.end()) {
-        return fallback;
-    }
-    try {
-        return std::stoi(it->second);
-    } catch (...) {
-        return fallback;
-    }
-}
-
-std::string readStrAttr(const std::unordered_map<std::string, std::string>& attrs,
-                        const std::string& key) {
-    auto it = attrs.find(key);
-    if (it == attrs.end()) {
+std::string contextPrefix(const std::string& context) {
+    if (context.empty()) {
         return {};
     }
-    return it->second;
+    return context + ": ";
+}
+
+bool readIntAttribute(const QXmlStreamAttributes& attrs,
+                      const char* key,
+                      int fallback,
+                      int& out,
+                      std::string& error,
+                      const std::string& context) {
+    const QStringView rawValue = attrs.value(QLatin1StringView(key));
+    if (rawValue.isNull()) {
+        out = fallback;
+        return true;
+    }
+
+    bool ok = false;
+    const int value = rawValue.trimmed().toInt(&ok);
+    if (!ok) {
+        error = contextPrefix(context) + "invalid integer value for attribute '" + key + "'.";
+        return false;
+    }
+    out = value;
+    return true;
+}
+
+bool readRequiredIntAttribute(const QXmlStreamAttributes& attrs,
+                              const char* key,
+                              int& out,
+                              std::string& error,
+                              const std::string& context) {
+    const QStringView rawValue = attrs.value(QLatin1StringView(key));
+    if (rawValue.isNull() || rawValue.trimmed().isEmpty()) {
+        error = contextPrefix(context) + "missing required attribute '" + key + "'.";
+        return false;
+    }
+    return readIntAttribute(attrs, key, 0, out, error, context);
+}
+
+std::string readStringAttribute(const QXmlStreamAttributes& attrs, const char* key) {
+    return toStdString(attrs.value(QLatin1StringView(key)).trimmed());
+}
+
+bool readRequiredStringAttribute(const QXmlStreamAttributes& attrs,
+                                 const char* key,
+                                 std::string& out,
+                                 std::string& error,
+                                 const std::string& context) {
+    const QStringView value = attrs.value(QLatin1StringView(key)).trimmed();
+    if (value.isNull() || value.isEmpty()) {
+        error = contextPrefix(context) + "missing required attribute '" + key + "'.";
+        return false;
+    }
+    out = toStdString(value);
+    return true;
 }
 
 } // namespace
 
 PackagerLoadResult PackagerLoader::loadFromXml(const std::string& xml) {
     PackagerLoadResult result;
-    static const std::regex packagerRe(
-        R"(<\s*Packager\b([^>]*)>([\s\S]*?)</\s*Packager\s*>)",
-        std::regex::icase);
-    static const std::regex fieldRe(
-        R"(<\s*Field\b([^>]*)/?>)",
-        std::regex::icase);
+    QXmlStreamReader reader(QByteArray::fromStdString(xml));
 
-    auto begin = std::sregex_iterator(xml.begin(), xml.end(), packagerRe);
-    auto end = std::sregex_iterator();
-    for (auto it = begin; it != end; ++it) {
+    while (!reader.atEnd()) {
+        const auto token = reader.readNext();
+        if (token != QXmlStreamReader::StartElement) {
+            continue;
+        }
+
+        if (reader.name() != QLatin1StringView("Packager")) {
+            continue;
+        }
+
         Packager pack;
-        const std::string packagerTag = it->str(1);
-        const std::string body = it->str(2);
-        auto attrs = parseAttributes(packagerTag);
+        std::string error;
+        const QXmlStreamAttributes packagerAttrs = reader.attributes();
+        if (!readRequiredStringAttribute(packagerAttrs, "Name", pack.name, error, "Packager")) {
+            result.error = error;
+            return result;
+        }
+        pack.macMethod = readStringAttribute(packagerAttrs, "MacMethod");
+        pack.lenFormat = readStringAttribute(packagerAttrs, "LenFormat");
+        if (!readIntAttribute(packagerAttrs, "MacSize", 0, pack.macSize, error, "Packager '" + pack.name + "'") ||
+            !readIntAttribute(packagerAttrs, "BitmapIndex", 1, pack.bitmapIndex, error, "Packager '" + pack.name + "'") ||
+            !readIntAttribute(packagerAttrs, "SecondPartBitmap", 64, pack.secondPartBitmap, error, "Packager '" + pack.name + "'") ||
+            !readIntAttribute(packagerAttrs, "FieldCount", 64, pack.fieldCount, error, "Packager '" + pack.name + "'") ||
+            !readIntAttribute(packagerAttrs, "LenLen", 0, pack.lenLen, error, "Packager '" + pack.name + "'")) {
+            result.error = error;
+            return result;
+        }
 
-        pack.name = readStrAttr(attrs, "Name");
-        pack.macMethod = readStrAttr(attrs, "MacMethod");
-        pack.macSize = readIntAttr(attrs, "MacSize", 0);
-        pack.bitmapIndex = readIntAttr(attrs, "BitmapIndex", 1);
-        pack.secondPartBitmap = readIntAttr(attrs, "SecondPartBitmap", 64);
-        pack.fieldCount = readIntAttr(attrs, "FieldCount", 64);
-        pack.lenFormat = readStrAttr(attrs, "LenFormat");
-        pack.lenLen = readIntAttr(attrs, "LenLen", 0);
-
-        auto fieldBegin = std::sregex_iterator(body.begin(), body.end(), fieldRe);
-        auto fieldEnd = std::sregex_iterator();
-        for (auto fit = fieldBegin; fit != fieldEnd; ++fit) {
-            const std::string fieldTag = fit->str(1);
-            auto fattrs = parseAttributes(fieldTag);
-            const int fieldId = readIntAttr(fattrs, "FieldId", -1);
-            if (fieldId < 0) {
+        while (!(reader.tokenType() == QXmlStreamReader::EndElement &&
+                 reader.name() == QLatin1StringView("Packager")) &&
+               !reader.atEnd()) {
+            const auto innerToken = reader.readNext();
+            if (innerToken != QXmlStreamReader::StartElement) {
+                continue;
+            }
+            if (reader.name() != QLatin1StringView("Field")) {
+                reader.skipCurrentElement();
                 continue;
             }
 
+            const QXmlStreamAttributes fieldAttrs = reader.attributes();
             FieldDef def;
-            def.id = fieldId;
-            def.type = parseFieldType(readStrAttr(fattrs, "FieldType"));
-            def.length = readIntAttr(fattrs, "FieldLength", 0);
-            def.desc = readStrAttr(fattrs, "FieldDesc");
-            def.flags = readStrAttr(fattrs, "Flags");
+            if (!readRequiredIntAttribute(fieldAttrs,
+                                          "FieldId",
+                                          def.id,
+                                          error,
+                                          "Packager '" + pack.name + "' field") ||
+                !readIntAttribute(fieldAttrs,
+                                  "FieldLength",
+                                  0,
+                                  def.length,
+                                  error,
+                                  "Packager '" + pack.name + "' field " + std::to_string(def.id))) {
+                result.error = error;
+                return result;
+            }
+
+            def.type = parseFieldType(readStringAttribute(fieldAttrs, "FieldType"));
+            def.desc = readStringAttribute(fieldAttrs, "FieldDesc");
+            def.flags = readStringAttribute(fieldAttrs, "Flags");
             def.lengthDigits = lengthDigitsForFieldType(def.type);
             def.variable = isVariableLength(def.type);
             pack.fields[def.id] = def;
         }
 
-        if (!pack.name.empty()) {
-            result.packagers.push_back(std::move(pack));
-        }
+        result.packagers.push_back(std::move(pack));
+    }
+
+    if (reader.hasError()) {
+        result.ok = false;
+        result.error = "XML parse error at line " + std::to_string(reader.lineNumber()) + ", column " +
+                       std::to_string(reader.columnNumber()) + ": " + toStdString(reader.errorString());
+        return result;
     }
 
     if (result.packagers.empty()) {

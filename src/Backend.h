@@ -39,6 +39,32 @@ public:
                                      const QString& lengthMode,
                                      int lengthSize);
 
+    Q_INVOKABLE QString calculateMacForFields(const QString& packagerName,
+                                              const QString& fieldsJson,
+                                              int macFieldId,
+                                              const QString& keyHex,
+                                              bool lengthHeaderEnabled,
+                                              const QString& lengthMode,
+                                              int lengthSize,
+                                              const QString& paddingMode);
+
+    Q_INVOKABLE QString verifyMacForFields(const QString& packagerName,
+                                           const QString& fieldsJson,
+                                           int macFieldId,
+                                           const QString& keyHex,
+                                           bool lengthHeaderEnabled,
+                                           const QString& lengthMode,
+                                           int lengthSize,
+                                           const QString& paddingMode);
+
+    Q_INVOKABLE QString transformCrypto(const QString& algorithm,
+                                        const QString& operation,
+                                        const QString& payload,
+                                        bool inputHex,
+                                        const QString& keyHex,
+                                        const QString& ivHex,
+                                        bool usePadding);
+
     Q_INVOKABLE QString saveBufferFile(const QString& path,
                                        const QString& packagerName,
                                        const QString& fieldsJson,

@@ -1,3 +1,4 @@
+
 # BufferX
 
 BufferX is a Qt 6 desktop tool for working with ISO 8583-style messages and related binary payloads.
@@ -41,6 +42,9 @@ The current implementation is aimed at practical workstation use rather than ful
   - `AES-256-ECB`
   - `AES-256-CBC`
 - test executable wired into `ctest`
+
+<img width="1510" height="880" alt="6" src="https://github.com/user-attachments/assets/c2539c52-25db-49cf-aafb-895e487cc625" />
+
 
 ## Build
 

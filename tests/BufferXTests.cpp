@@ -22,6 +22,7 @@
 #include "Mac.h"
 #include "Packager.h"
 #include "PackagerLoader.h"
+#include "Tlv.h"
 
 namespace {
 
@@ -677,6 +678,39 @@ void testBackendSaveLoad() {
     require(fields.size() == sampleFieldsJson().size(), "Saved field count mismatch.");
 }
 
+void testTlvParsing() {
+    const std::string hex =
+        "711A6B0D8107312E302E302E30830230326F04890230306203810131";
+    const HexParseResult parsed = fromHex(hex);
+    require(parsed.ok, "TLV sample hex parse failed.");
+
+    const std::vector<tlvtool::Node> nodes =
+        tlvtool::parse(std::vector<uint8_t>(parsed.bytes.begin(), parsed.bytes.end()));
+    require(nodes.size() == 1, "Expected one TLV root node.");
+    require(tlvtool::toHex(nodes.front().tag, 0) == "71", "Unexpected TLV root tag.");
+    require(nodes.front().isComposite(), "Root TLV node should be composite.");
+    require(nodes.front().children.size() == 3, "Root TLV child count mismatch.");
+
+    const std::string treeText = tlvtool::buildTreeText(nodes);
+    require(treeText.find("Tag=71") != std::string::npos, "TLV tree output missing root tag.");
+
+    const std::string inlineText = tlvtool::buildInlineText(nodes);
+    require(inlineText.find("71/6B/81") != std::string::npos, "TLV inline output missing expected path.");
+    require(inlineText.find("Terminal firmware version") != std::string::npos,
+            "TLV inline output missing tag description.");
+
+    Backend backend;
+    const QJsonObject parsedTlv = requireOk(backend.parseTlv(QString::fromStdString(hex), true));
+    require(parsedTlv.value("treeText").toString().contains("Tag=71"), "Backend TLV tree text mismatch.");
+    require(parsedTlv.value("inlineText").toString().contains("71/6B/81"),
+            "Backend TLV inline text mismatch.");
+
+    const QJsonArray flat = parsedTlv.value("flat").toArray();
+    require(flat.size() == 4, "Backend TLV flat entry count mismatch.");
+    require(flat.at(0).toObject().value("description").toString().contains("Terminal firmware version"),
+            "Backend TLV description mismatch.");
+}
+
 void runTest(const char* name, const std::function<void()>& test) {
     test();
     std::cout << "[PASS] " << name << '\n';
@@ -704,6 +738,7 @@ int main(int argc, char* argv[]) {
         runTest("Crypto handling", testCryptoHandling);
         runTest("Backend encode/decode bridge", testBackendEncodeDecodeBridge);
         runTest("Backend save/load", testBackendSaveLoad);
+        runTest("TLV parsing", testTlvParsing);
     } catch (const TestFailure& failure) {
         std::cerr << "[FAIL] " << failure.what() << '\n';
         return EXIT_FAILURE;

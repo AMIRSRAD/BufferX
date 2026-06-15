@@ -4,6 +4,7 @@
 #include "Hex.h"
 #include "Mac.h"
 #include "PackagerLoader.h"
+#include "Tlv.h"
 
 #include <QFile>
 #include <QFileDialog>
@@ -88,6 +89,35 @@ bool parsePayloadBytes(const QString& payload, bool inputHex, std::vector<unsign
     const QByteArray utf8 = payload.toUtf8();
     bytes.assign(utf8.begin(), utf8.end());
     return true;
+}
+
+QJsonObject tlvNodeToJson(const tlvtool::Node& node, const QString& prefix) {
+    const QString tagHex = QString::fromStdString(tlvtool::toHex(node.tag, '/'));
+    const QString path = prefix.isEmpty() ? tagHex : (prefix + QLatin1Char('/') + tagHex);
+    QJsonObject obj;
+    obj["tagHex"] = QString::fromStdString(tlvtool::toHex(node.tag, ' '));
+    obj["path"] = path;
+    size_t payloadLength = node.value.size();
+    if (node.isComposite()) {
+        payloadLength = 0;
+        for (const auto& child : node.children) {
+            payloadLength += child.encode().size();
+        }
+    }
+    obj["length"] = static_cast<int>(payloadLength);
+    obj["composite"] = node.isComposite();
+    if (node.isComposite()) {
+        QJsonArray children;
+        for (const auto& child : node.children) {
+            children.append(tlvNodeToJson(child, path));
+        }
+        obj["children"] = children;
+    } else {
+        obj["valueHex"] = QString::fromStdString(tlvtool::toHex(node.value, ' '));
+        obj["valueText"] = QString::fromStdString(tlvtool::toAsciiDebug(node.value));
+        obj["description"] = QString::fromStdString(tlvtool::describePath(path.toStdString()));
+    }
+    return obj;
 }
 
 } // namespace
@@ -508,6 +538,48 @@ QString Backend::transformCrypto(const QString& algorithm,
     obj["text"] = QString::fromUtf8(utf8);
     obj["length"] = static_cast<int>(transformed.bytes.size());
     return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::parseTlv(const QString& payload, bool inputHex) {
+    std::vector<unsigned char> bytes;
+    QString error;
+    if (!parsePayloadBytes(payload, inputHex, bytes, error)) {
+        return jsonError(error);
+    }
+
+    try {
+        const std::vector<tlvtool::Node> nodes =
+            tlvtool::parse(std::vector<uint8_t>(bytes.begin(), bytes.end()));
+
+        QJsonArray nodeArray;
+        for (const auto& node : nodes) {
+            nodeArray.append(tlvNodeToJson(node, QString()));
+        }
+
+        const std::vector<tlvtool::FlatEntry> flatEntries = tlvtool::flatten(nodes);
+        QJsonArray flatArray;
+        for (const auto& entry : flatEntries) {
+            QJsonObject obj;
+            obj["path"] = QString::fromStdString(entry.path);
+            obj["tagHex"] = QString::fromStdString(tlvtool::toHex(entry.tag, ' '));
+            obj["length"] = static_cast<int>(entry.value.size());
+            obj["valueHex"] = QString::fromStdString(tlvtool::toHex(entry.value, ' '));
+            obj["valueText"] = QString::fromStdString(tlvtool::toAsciiDebug(entry.value));
+            obj["description"] = QString::fromStdString(entry.description);
+            flatArray.append(obj);
+        }
+
+        QJsonObject obj;
+        obj["ok"] = true;
+        obj["rawHex"] = QString::fromStdString(tlvtool::toHex(std::vector<uint8_t>(bytes.begin(), bytes.end()), ' '));
+        obj["tree"] = nodeArray;
+        obj["flat"] = flatArray;
+        obj["treeText"] = QString::fromStdString(tlvtool::buildTreeText(nodes));
+        obj["inlineText"] = QString::fromStdString(tlvtool::buildInlineText(nodes));
+        return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    } catch (const std::exception& ex) {
+        return jsonError(QString::fromStdString(ex.what()));
+    }
 }
 
 QString Backend::saveBufferFile(const QString& path,

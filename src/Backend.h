@@ -65,6 +65,8 @@ public:
                                         const QString& ivHex,
                                         bool usePadding);
 
+    Q_INVOKABLE QString parseTlv(const QString& payload, bool inputHex);
+
     Q_INVOKABLE QString saveBufferFile(const QString& path,
                                        const QString& packagerName,
                                        const QString& fieldsJson,

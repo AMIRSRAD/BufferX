@@ -40,6 +40,8 @@ ApplicationWindow {
     property string lastError: ""
     property string macResultHex: ""
     property string macVerifyStatus: ""
+    property string tlvTreeText: ""
+    property string tlvInlineText: ""
     property real intro: 0
     property string packagerPathValue: ""
     property int selectedBufferIndex: -1
@@ -49,6 +51,7 @@ ApplicationWindow {
     property bool settingsOpen: false
     property bool macOpen: false
     property bool cryptoOpen: false
+    property bool tlvOpen: false
     property int settingsWidth: 320
     property int cursorLine: 1
     property int cursorCol: 1
@@ -413,6 +416,7 @@ ApplicationWindow {
         settingsOpen = exceptName === "settings" ? settingsOpen : false
         macOpen = exceptName === "mac" ? macOpen : false
         cryptoOpen = exceptName === "crypto" ? cryptoOpen : false
+        tlvOpen = exceptName === "tlv" ? tlvOpen : false
     }
 
     function toggleFieldHex(index) {
@@ -830,6 +834,27 @@ ApplicationWindow {
             return
         }
         cryptoOutput.text = cryptoOutputMode.currentIndex === 0 ? (response.text || "") : (response.rawHex || "")
+    }
+
+    function loadTlvField() {
+        lastError = ""
+        var idx = fieldIndexById(tlvFieldId.value)
+        if (idx < 0) {
+            lastError = "Field " + tlvFieldId.value + " is not present."
+            return
+        }
+        tlvInput.text = fieldModel.get(idx).value || ""
+    }
+
+    function parseTlvInput() {
+        lastError = ""
+        var response = parseJsonSafe(backend.parseTlv(tlvInput.text, tlvInputMode.currentIndex === 0))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        tlvTreeText = response.treeText || ""
+        tlvInlineText = response.inlineText || ""
     }
 
     function saveBufferToPath(path) {
@@ -1995,6 +2020,134 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: tlvPanel
+        width: 460
+        height: 520
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: tlvButton.x
+        y: tlvOpen ? (tlvButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "TLV"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                SpinBox {
+                    id: tlvFieldId
+                    from: 0
+                    to: 128
+                    value: 48
+                    editable: true
+                    Layout.preferredWidth: 90
+                }
+                ComboBox {
+                    id: tlvInputMode
+                    model: ["Hex In", "Text In"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+                AppButton {
+                    text: "Load Field"
+                    onClicked: loadTlvField()
+                }
+                AppButton {
+                    text: "Parse"
+                    onClicked: parseTlvInput()
+                }
+            }
+
+            TextArea {
+                id: tlvInput
+                Layout.fillWidth: true
+                Layout.preferredHeight: 96
+                placeholderText: "TLV input"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                text: "Tree"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            TextArea {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 150
+                readOnly: true
+                text: tlvTreeText
+                placeholderText: "Parsed TLV tree"
+                color: ink
+                font.pixelSize: 12
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                text: "Flat"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            TextArea {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                readOnly: true
+                text: tlvInlineText
+                placeholderText: "Parsed TLV flat view"
+                color: ink
+                font.pixelSize: 12
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+        }
+    }
+
+    Rectangle {
         id: statusBar
         height: 32
         radius: 10
@@ -2047,10 +2200,10 @@ ApplicationWindow {
         font.pixelSize: 11
         z: 11
         onClicked: {
+            closeToolPanels("settings")
             settingsOpen = !settingsOpen
             if (settingsOpen) {
-                macOpen = false
-                cryptoOpen = false
+                closeToolPanels("settings")
             }
         }
     }
@@ -2067,10 +2220,10 @@ ApplicationWindow {
         font.pixelSize: 11
         z: 11
         onClicked: {
+            closeToolPanels("mac")
             macOpen = !macOpen
             if (macOpen) {
-                settingsOpen = false
-                cryptoOpen = false
+                closeToolPanels("mac")
             }
         }
     }
@@ -2087,10 +2240,30 @@ ApplicationWindow {
         font.pixelSize: 11
         z: 11
         onClicked: {
+            closeToolPanels("crypto")
             cryptoOpen = !cryptoOpen
             if (cryptoOpen) {
-                settingsOpen = false
-                macOpen = false
+                closeToolPanels("crypto")
+            }
+        }
+    }
+
+    AppButton {
+        id: tlvButton
+        text: tlvOpen ? "TLV v" : "TLV >"
+        anchors.left: cryptoButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("tlv")
+            tlvOpen = !tlvOpen
+            if (tlvOpen) {
+                closeToolPanels("tlv")
             }
         }
     }

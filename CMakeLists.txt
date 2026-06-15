@@ -16,6 +16,7 @@ set(BUFFERX_CORE_SOURCES
     src/Mac.cpp
     src/Packager.cpp
     src/PackagerLoader.cpp
+    src/Tlv.cpp
     src/Hex.cpp
 )
 

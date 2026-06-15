@@ -2,10 +2,12 @@
 
 #include "Hex.h"
 
+#include <openssl/des.h>
 #include <openssl/evp.h>
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 
 namespace {
 
@@ -76,6 +78,136 @@ bool resolveCipher(const std::string& algorithm,
     return false;
 }
 
+std::vector<unsigned char> addPkcs7Padding(const std::vector<unsigned char>& input, size_t blockSize) {
+    size_t pad = blockSize - (input.size() % blockSize);
+    if (pad == 0) {
+        pad = blockSize;
+    }
+    std::vector<unsigned char> padded = input;
+    padded.insert(padded.end(), pad, static_cast<unsigned char>(pad));
+    return padded;
+}
+
+bool stripPkcs7Padding(std::vector<unsigned char>& input, size_t blockSize, std::string& error) {
+    if (input.empty() || (input.size() % blockSize) != 0) {
+        error = "Invalid padded payload length.";
+        return false;
+    }
+    const unsigned char pad = input.back();
+    if (pad == 0 || pad > blockSize || pad > input.size()) {
+        error = "Invalid PKCS#7 padding.";
+        return false;
+    }
+    const size_t start = input.size() - pad;
+    for (size_t i = start; i < input.size(); ++i) {
+        if (input[i] != pad) {
+            error = "Invalid PKCS#7 padding.";
+            return false;
+        }
+    }
+    input.resize(start);
+    return true;
+}
+
+bool isDesFamily(const std::string& normalized) {
+    return normalized == "desecb" || normalized == "descbc" || normalized == "3desecb" ||
+           normalized == "desedeecb" || normalized == "tripledesecb" || normalized == "3descbc" ||
+           normalized == "desedecbc" || normalized == "tripledescbc";
+}
+
+CryptoResult transformWithDes(const std::string& normalized,
+                              bool encrypt,
+                              const std::vector<unsigned char>& input,
+                              const std::vector<unsigned char>& key,
+                              const std::vector<unsigned char>& iv,
+                              bool usePadding) {
+    CryptoResult result;
+    constexpr size_t kBlockSize = 8;
+    std::vector<unsigned char> working = input;
+
+    if (encrypt) {
+        if (usePadding) {
+            working = addPkcs7Padding(input, kBlockSize);
+        } else if ((working.size() % kBlockSize) != 0) {
+            result.error = "Input length must be a multiple of 8 bytes when padding is disabled.";
+            return result;
+        }
+    } else if ((working.size() % kBlockSize) != 0) {
+        result.error = "Encrypted payload length must be a multiple of 8 bytes.";
+        return result;
+    }
+
+    result.bytes.resize(working.size());
+
+    DES_cblock block1 {};
+    DES_cblock block2 {};
+    DES_cblock block3 {};
+    std::memcpy(block1, key.data(), 8);
+    DES_key_schedule ks1 {};
+    DES_set_key_unchecked(&block1, &ks1);
+
+    const bool tripleDes = normalized != "desecb" && normalized != "descbc";
+    DES_key_schedule ks2 {};
+    DES_key_schedule ks3 {};
+    if (tripleDes) {
+        std::memcpy(block2, key.data() + 8, 8);
+        std::memcpy(block3, key.data() + 16, 8);
+        DES_set_key_unchecked(&block2, &ks2);
+        DES_set_key_unchecked(&block3, &ks3);
+    }
+
+    if (normalized == "desecb") {
+        for (size_t offset = 0; offset < working.size(); offset += kBlockSize) {
+            DES_ecb_encrypt(reinterpret_cast<const_DES_cblock*>(working.data() + offset),
+                            reinterpret_cast<DES_cblock*>(result.bytes.data() + offset),
+                            &ks1,
+                            encrypt ? DES_ENCRYPT : DES_DECRYPT);
+        }
+    } else if (normalized == "descbc") {
+        DES_cblock ivBlock {};
+        std::memcpy(ivBlock, iv.data(), 8);
+        DES_ncbc_encrypt(working.data(),
+                         result.bytes.data(),
+                         static_cast<long>(working.size()),
+                         &ks1,
+                         &ivBlock,
+                         encrypt ? DES_ENCRYPT : DES_DECRYPT);
+    } else if (normalized == "3desecb" || normalized == "desedeecb" || normalized == "tripledesecb") {
+        for (size_t offset = 0; offset < working.size(); offset += kBlockSize) {
+            DES_ecb3_encrypt(reinterpret_cast<const_DES_cblock*>(working.data() + offset),
+                             reinterpret_cast<DES_cblock*>(result.bytes.data() + offset),
+                             &ks1,
+                             &ks2,
+                             &ks3,
+                             encrypt ? DES_ENCRYPT : DES_DECRYPT);
+        }
+    } else if (normalized == "3descbc" || normalized == "desedecbc" || normalized == "tripledescbc") {
+        DES_cblock ivBlock {};
+        std::memcpy(ivBlock, iv.data(), 8);
+        DES_ede3_cbc_encrypt(working.data(),
+                             result.bytes.data(),
+                             static_cast<long>(working.size()),
+                             &ks1,
+                             &ks2,
+                             &ks3,
+                             &ivBlock,
+                             encrypt ? DES_ENCRYPT : DES_DECRYPT);
+    } else {
+        result.error = "Unsupported DES algorithm.";
+        return result;
+    }
+
+    if (!encrypt && usePadding) {
+        if (!stripPkcs7Padding(result.bytes, kBlockSize, result.error)) {
+            result.bytes.clear();
+            return result;
+        }
+    }
+
+    result.ok = true;
+    return result;
+}
+
 std::vector<unsigned char> adjustKey(const std::vector<unsigned char>& keyBytes,
                                      int requiredLength,
                                      std::string& error) {
@@ -118,6 +250,8 @@ CryptoResult CryptoEngine::transform(const std::string& algorithm,
                                      const std::string& ivHex,
                                      bool usePadding) {
     CryptoResult result;
+    const std::string normalized = normalizeName(algorithm);
+
     const EVP_CIPHER* cipher = nullptr;
     int keyLength = 0;
     int ivLength = 0;
@@ -148,6 +282,10 @@ CryptoResult CryptoEngine::transform(const std::string& algorithm,
     if (!ivError.empty()) {
         result.error = ivError;
         return result;
+    }
+
+    if (isDesFamily(normalized)) {
+        return transformWithDes(normalized, encrypt, input, key, iv, usePadding);
     }
 
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();

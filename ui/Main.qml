@@ -42,6 +42,8 @@ ApplicationWindow {
     property string macVerifyStatus: ""
     property string tlvTreeText: ""
     property string tlvInlineText: ""
+    property string iranSystemOutputText: ""
+    property string iranSystemOutputMeta: ""
     property real intro: 0
     property string packagerPathValue: ""
     property int selectedBufferIndex: -1
@@ -52,6 +54,7 @@ ApplicationWindow {
     property bool macOpen: false
     property bool cryptoOpen: false
     property bool tlvOpen: false
+    property bool iranSystemOpen: false
     property int settingsWidth: 320
     property int cursorLine: 1
     property int cursorCol: 1
@@ -417,6 +420,7 @@ ApplicationWindow {
         macOpen = exceptName === "mac" ? macOpen : false
         cryptoOpen = exceptName === "crypto" ? cryptoOpen : false
         tlvOpen = exceptName === "tlv" ? tlvOpen : false
+        iranSystemOpen = exceptName === "iranSystem" ? iranSystemOpen : false
     }
 
     function toggleFieldHex(index) {
@@ -855,6 +859,106 @@ ApplicationWindow {
         }
         tlvTreeText = response.treeText || ""
         tlvInlineText = response.inlineText || ""
+    }
+
+    function loadIranSystemField() {
+        lastError = ""
+        var idx = fieldIndexById(iranSystemFieldId.value)
+        if (idx < 0) {
+            lastError = "Field " + iranSystemFieldId.value + " is not present."
+            return
+        }
+        iranSystemInput.text = fieldModel.get(idx).value || ""
+    }
+
+    function setIranSystemOutput(response) {
+        if (iranSystemDirection.currentText === "Encode IranSys" && iranSystemTextEncoding.currentText === "UTF-8") {
+            iranSystemOutputText = response.utf8Display || response.text || ""
+            iranSystemOutputMeta = response.rawHex ? ("Hex: " + response.rawHex) : ""
+        } else if (iranSystemTextEncoding.currentText === "ANSI") {
+            iranSystemOutputText = response.ansiDisplay || ""
+            iranSystemOutputMeta = response.rawHex ? ("Hex: " + response.rawHex) : ""
+        } else {
+            iranSystemOutputText = response.text || ""
+            iranSystemOutputMeta = response.rawHex ? ("Hex: " + response.rawHex) : ""
+        }
+    }
+
+    function convertIranSystemToUtf8Text(text) {
+        return parseJsonSafe(backend.iranSystemTextToUtf8(text))
+    }
+
+    function convertUtf8ToIranSystemText(text) {
+        return parseJsonSafe(backend.utf8ToIranSystemText(text, iranSystemConvertDigits.checked))
+    }
+
+    function convertAnsiHexToUtf8Text(text) {
+        return parseJsonSafe(backend.ansiHexToUtf8Text(text))
+    }
+
+    function convertUtf8ToAnsiHex(text) {
+        return parseJsonSafe(backend.utf8ToAnsiHex(text))
+    }
+
+    function swapIranSystemDirection() {
+        var currentInput = iranSystemInput.text
+        iranSystemInput.text = iranSystemOutputText
+        iranSystemOutputText = currentInput
+        iranSystemOutputMeta = ""
+    }
+
+    function runIranSystemConversion() {
+        lastError = ""
+        iranSystemOutputMeta = ""
+        var direction = iranSystemDirection.currentText
+        var response = { ok: false, error: "Unsupported conversion mode." }
+
+        if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "UTF-8") {
+            response = convertIranSystemToUtf8Text(iranSystemInput.text)
+        } else if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "ANSI") {
+            response = convertIranSystemToUtf8Text(iranSystemInput.text)
+            if (response.ok) {
+                var decodedAnsiDisplay = convertAnsiHexToUtf8Text(response.rawHex || "")
+                if (!decodedAnsiDisplay.ok) {
+                    lastError = decodedAnsiDisplay.error
+                    return
+                }
+                response.ansiDisplay = decodedAnsiDisplay.text || ""
+            }
+        } else if (direction === "Encode IranSys") {
+            if (iranSystemTextEncoding.currentText === "ANSI") {
+                var ansiResponse = parseJsonSafe(backend.utf8ToAnsiText(iranSystemInput.text))
+                if (!ansiResponse.ok) {
+                    lastError = ansiResponse.error
+                    return
+                }
+                response = convertUtf8ToIranSystemText(ansiResponse.text || "")
+                if (response.ok) {
+                    var encodedAnsiDisplay = convertAnsiHexToUtf8Text(response.rawHex || "")
+                    if (!encodedAnsiDisplay.ok) {
+                        lastError = encodedAnsiDisplay.error
+                        return
+                    }
+                    response.ansiDisplay = encodedAnsiDisplay.text || ""
+                }
+            } else {
+                response = convertUtf8ToIranSystemText(iranSystemInput.text)
+                if (response.ok) {
+                    var encodedUtf8Display = parseJsonSafe(backend.hexToUtf8(response.rawHex || ""))
+                    if (!encodedUtf8Display.ok) {
+                        lastError = encodedUtf8Display.error
+                        return
+                    }
+                    response.utf8Display = encodedUtf8Display.text || ""
+                }
+            }
+        }
+
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        setIranSystemOutput(response)
     }
 
     function saveBufferToPath(path) {
@@ -2148,6 +2252,154 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: iranSystemPanel
+        width: 460
+        height: 470
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: iranSystemButton.x
+        y: iranSystemOpen ? (iranSystemButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "IranSystem"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                SpinBox {
+                    id: iranSystemFieldId
+                    from: 0
+                    to: 128
+                    value: 48
+                    editable: true
+                    Layout.preferredWidth: 90
+                }
+                AppButton {
+                    text: "Load Field"
+                    onClicked: loadIranSystemField()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label {
+                    text: "Mode"
+                    color: ink
+                    font.pixelSize: 12
+                    Layout.alignment: Qt.AlignVCenter
+                }
+                ComboBox {
+                    id: iranSystemDirection
+                    model: ["Decode IranSys", "Encode IranSys"]
+                    currentIndex: 0
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: "Encoding"
+                    color: ink
+                    font.pixelSize: 12
+                    Layout.alignment: Qt.AlignVCenter
+                }
+                ComboBox {
+                    id: iranSystemTextEncoding
+                    model: ["UTF-8", "ANSI"]
+                    currentIndex: 0
+                    Layout.fillWidth: true
+                }
+                AppButton {
+                    text: "Convert"
+                    Layout.preferredWidth: 88
+                    onClicked: runIranSystemConversion()
+                }
+            }
+
+            CheckBox {
+                id: iranSystemConvertDigits
+                text: "Convert digits to IranSystem"
+                checked: true
+                Layout.fillWidth: true
+                visible: iranSystemDirection.currentText === "Encode IranSys"
+                enabled: visible
+            }
+
+            TextArea {
+                id: iranSystemInput
+                Layout.fillWidth: true
+                Layout.preferredHeight: 120
+                placeholderText: iranSystemDirection.currentText === "Decode IranSys"
+                                 ? "IranSystem input"
+                                 : "Text input"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                text: iranSystemDirection.currentText === "Decode IranSys"
+                      ? ("Output (" + iranSystemTextEncoding.currentText + ")")
+                      : "IranSystem Output"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            TextArea {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                readOnly: true
+                text: iranSystemOutputText
+                placeholderText: "Converted text"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                visible: iranSystemOutputMeta.length > 0
+                text: iranSystemOutputMeta
+                color: muted
+                font.pixelSize: 11
+                Layout.fillWidth: true
+                wrapMode: Text.WrapAnywhere
+            }
+        }
+    }
+
+    Rectangle {
         id: statusBar
         height: 32
         radius: 10
@@ -2264,6 +2516,26 @@ ApplicationWindow {
             tlvOpen = !tlvOpen
             if (tlvOpen) {
                 closeToolPanels("tlv")
+            }
+        }
+    }
+
+    AppButton {
+        id: iranSystemButton
+        text: iranSystemOpen ? "IranSys v" : "IranSys >"
+        anchors.left: tlvButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("iranSystem")
+            iranSystemOpen = !iranSystemOpen
+            if (iranSystemOpen) {
+                closeToolPanels("iranSystem")
             }
         }
     }

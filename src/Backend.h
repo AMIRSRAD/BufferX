@@ -22,6 +22,16 @@ public:
     Q_INVOKABLE QString chooseBufferSaveFile() const;
     Q_INVOKABLE QString utf8ToHex(const QString& text) const;
     Q_INVOKABLE QString hexToUtf8(const QString& hexText) const;
+    Q_INVOKABLE QString iranSystemToUnicode(const QString& payload, bool inputHex) const;
+    Q_INVOKABLE QString unicodeToIranSystem(const QString& text, bool convertNumbers) const;
+    Q_INVOKABLE QString iranSystemTextToUtf8(const QString& text) const;
+    Q_INVOKABLE QString utf8ToIranSystemText(const QString& text, bool convertNumbers) const;
+    Q_INVOKABLE QString asciiToUtf8Text(const QString& text) const;
+    Q_INVOKABLE QString utf8ToAsciiText(const QString& text) const;
+    Q_INVOKABLE QString ansiToUtf8Text(const QString& text) const;
+    Q_INVOKABLE QString utf8ToAnsiText(const QString& text) const;
+    Q_INVOKABLE QString ansiHexToUtf8Text(const QString& hexText) const;
+    Q_INVOKABLE QString utf8ToAnsiHex(const QString& text) const;
 
     Q_INVOKABLE QString decodeBuffer(const QString& packagerName,
                                      const QString& payload,

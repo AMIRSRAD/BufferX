@@ -18,6 +18,7 @@ set(BUFFERX_CORE_SOURCES
     src/PackagerLoader.cpp
     src/Tlv.cpp
     src/Hex.cpp
+    src/IranSystem.cpp
 )
 
 qt_add_executable(BufferX WIN32

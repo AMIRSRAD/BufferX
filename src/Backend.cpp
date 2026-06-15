@@ -2,6 +2,7 @@
 
 #include "Crypto.h"
 #include "Hex.h"
+#include "IranSystem.h"
 #include "Mac.h"
 #include "PackagerLoader.h"
 #include "Tlv.h"
@@ -14,6 +15,11 @@
 
 #include <algorithm>
 #include <map>
+
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -119,6 +125,61 @@ QJsonObject tlvNodeToJson(const tlvtool::Node& node, const QString& prefix) {
     }
     return obj;
 }
+
+#ifdef _WIN32
+QString ansiBytesToUtf8Text(const QByteArray& ansi, QString& error) {
+    if (ansi.isEmpty()) {
+        return QString();
+    }
+
+    const int wideLength = MultiByteToWideChar(CP_ACP, 0, ansi.constData(), ansi.size(), nullptr, 0);
+    if (wideLength <= 0) {
+        error = QStringLiteral("Failed to decode ANSI text.");
+        return QString();
+    }
+
+    std::wstring wide(static_cast<size_t>(wideLength), L'\0');
+    const int converted = MultiByteToWideChar(CP_ACP, 0, ansi.constData(), ansi.size(), wide.data(), wideLength);
+    if (converted != wideLength) {
+        error = QStringLiteral("Failed to decode ANSI text.");
+        return QString();
+    }
+
+    QString text = QString::fromWCharArray(wide.data(), wideLength);
+    text.replace(QChar(0x064A), QChar(0x06CC));
+    text.replace(QChar(0x0649), QChar(0x06CC));
+    text.replace(QChar(0x0643), QChar(0x06A9));
+    return text;
+}
+
+QByteArray utf8TextToAnsiBytes(const QString& text, QString& error) {
+    if (text.isEmpty()) {
+        return {};
+    }
+
+    const std::wstring wide = text.toStdWString();
+    const int ansiLength = WideCharToMultiByte(CP_ACP, 0, wide.c_str(), static_cast<int>(wide.size()), nullptr, 0, nullptr, nullptr);
+    if (ansiLength <= 0) {
+        error = QStringLiteral("Failed to encode text as ANSI.");
+        return {};
+    }
+
+    std::string ansi(static_cast<size_t>(ansiLength), '\0');
+    const int converted = WideCharToMultiByte(CP_ACP,
+                                              0,
+                                              wide.c_str(),
+                                              static_cast<int>(wide.size()),
+                                              ansi.data(),
+                                              ansiLength,
+                                              nullptr,
+                                              nullptr);
+    if (converted != ansiLength) {
+        error = QStringLiteral("Failed to encode text as ANSI.");
+        return {};
+    }
+    return QByteArray(ansi.data(), ansiLength);
+}
+#endif
 
 } // namespace
 
@@ -280,6 +341,194 @@ QString Backend::hexToUtf8(const QString& hexText) const {
     obj["ok"] = true;
     obj["text"] = QString::fromUtf8(utf8);
     return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::iranSystemToUnicode(const QString& payload, bool inputHex) const {
+    std::vector<unsigned char> bytes;
+    QString error;
+    if (!parsePayloadBytes(payload, inputHex, bytes, error)) {
+        return jsonError(error);
+    }
+
+    const iransystem::ConversionResult converted = iransystem::toUnicode(bytes);
+    if (!converted.ok) {
+        return jsonError(converted.error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = converted.text;
+    obj["rawHex"] = QString::fromStdString(toHex(bytes, true));
+    obj["length"] = static_cast<int>(bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::unicodeToIranSystem(const QString& text, bool convertNumbers) const {
+    const iransystem::ConversionResult converted = iransystem::fromUnicode(text, convertNumbers);
+    if (!converted.ok) {
+        return jsonError(converted.error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = text;
+    obj["rawHex"] = QString::fromStdString(toHex(converted.bytes, true));
+    obj["length"] = static_cast<int>(converted.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::iranSystemTextToUtf8(const QString& text) const {
+    const iransystem::ConversionResult converted = iransystem::toUnicodeFromText(text);
+    if (!converted.ok) {
+        return jsonError(converted.error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = converted.text;
+    obj["length"] = static_cast<int>(converted.bytes.size());
+    obj["rawHex"] = QString::fromStdString(toHex(converted.bytes, true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::utf8ToIranSystemText(const QString& text, bool convertNumbers) const {
+    const iransystem::ConversionResult converted = iransystem::fromUnicodeToText(text, convertNumbers);
+    if (!converted.ok) {
+        return jsonError(converted.error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = converted.text;
+    obj["length"] = static_cast<int>(converted.bytes.size());
+    obj["rawHex"] = QString::fromStdString(toHex(converted.bytes, true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::asciiToUtf8Text(const QString& text) const {
+    for (QChar ch : text) {
+        if (ch.unicode() > 0x7F) {
+            return jsonError(QStringLiteral("Input contains non-ASCII characters."));
+        }
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = text;
+    obj["length"] = text.size();
+    obj["rawHex"] = utf8ToHex(text);
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::utf8ToAsciiText(const QString& text) const {
+    QByteArray ascii;
+    ascii.reserve(text.size());
+    for (QChar ch : text) {
+        if (ch.unicode() > 0x7F) {
+            return jsonError(QStringLiteral("Text contains characters that cannot be represented in ASCII."));
+        }
+        ascii.push_back(static_cast<char>(ch.unicode()));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = QString::fromLatin1(ascii);
+    obj["length"] = ascii.size();
+    obj["rawHex"] = QString::fromStdString(toHex(std::vector<unsigned char>(ascii.begin(), ascii.end()), true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::ansiToUtf8Text(const QString& text) const {
+#ifdef _WIN32
+    QString error;
+    const QByteArray ansi = utf8TextToAnsiBytes(text, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+    const QString utf8 = ansiBytesToUtf8Text(ansi, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = utf8;
+    obj["length"] = ansi.size();
+    obj["rawHex"] = QString::fromStdString(toHex(std::vector<unsigned char>(ansi.begin(), ansi.end()), true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+#else
+    return jsonError(QStringLiteral("ANSI conversion is only available on Windows builds."));
+#endif
+}
+
+QString Backend::utf8ToAnsiText(const QString& text) const {
+#ifdef _WIN32
+    QString error;
+    const QByteArray ansi = utf8TextToAnsiBytes(text, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+    const QString ansiDisplay = ansiBytesToUtf8Text(ansi, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = ansiDisplay;
+    obj["length"] = ansi.size();
+    obj["rawHex"] = QString::fromStdString(toHex(std::vector<unsigned char>(ansi.begin(), ansi.end()), true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+#else
+    return jsonError(QStringLiteral("ANSI conversion is only available on Windows builds."));
+#endif
+}
+
+QString Backend::ansiHexToUtf8Text(const QString& hexText) const {
+#ifdef _WIN32
+    const HexParseResult parsed = fromHex(hexText.toStdString());
+    if (!parsed.ok) {
+        return jsonError(QString::fromStdString(parsed.error));
+    }
+
+    QString error;
+    const QByteArray ansi(reinterpret_cast<const char*>(parsed.bytes.data()), static_cast<int>(parsed.bytes.size()));
+    const QString utf8 = ansiBytesToUtf8Text(ansi, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = utf8;
+    obj["length"] = ansi.size();
+    obj["rawHex"] = QString::fromStdString(toHex(parsed.bytes, true));
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+#else
+    return jsonError(QStringLiteral("ANSI conversion is only available on Windows builds."));
+#endif
+}
+
+QString Backend::utf8ToAnsiHex(const QString& text) const {
+#ifdef _WIN32
+    QString error;
+    const QByteArray ansi = utf8TextToAnsiBytes(text, error);
+    if (!error.isEmpty()) {
+        return jsonError(error);
+    }
+
+    const std::vector<unsigned char> bytes(ansi.begin(), ansi.end());
+    const QString hex = QString::fromStdString(toHex(bytes, true));
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["text"] = hex;
+    obj["length"] = ansi.size();
+    obj["rawHex"] = hex;
+    obj["preview"] = text;
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+#else
+    return jsonError(QStringLiteral("ANSI conversion is only available on Windows builds."));
+#endif
 }
 
 QString Backend::decodeBuffer(const QString& packagerName,

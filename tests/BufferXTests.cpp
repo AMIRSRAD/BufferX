@@ -15,6 +15,11 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 #include "Backend.h"
 #include "Crypto.h"
 #include "Hex.h"
@@ -641,6 +646,37 @@ void testBackendEncodeDecodeBridge() {
                                                                           QStringLiteral(""),
                                                                           false));
     require(cryptoDecrypted.value("text").toString() == "TESTDATA", "Backend crypto round-trip mismatch.");
+
+    const QString salaam = QString::fromUtf8(u8"سلام");
+    const QJsonObject iranTextEncoded = requireOk(backend.utf8ToIranSystemText(salaam, true));
+    require(iranTextEncoded.value("text").toString().size() > 0, "Backend IranSystem text should not be empty.");
+
+    const QJsonObject iranTextDecoded = requireOk(backend.iranSystemTextToUtf8(iranTextEncoded.value("text").toString()));
+    require(iranTextDecoded.value("text").toString() == salaam, "Backend IranSystem text round-trip mismatch.");
+
+    const QJsonObject asciiEncoded = requireOk(backend.utf8ToAsciiText(QStringLiteral("ABC123")));
+    require(asciiEncoded.value("text").toString() == QStringLiteral("ABC123"), "Backend ASCII encode mismatch.");
+
+    const QJsonObject asciiDecoded = requireOk(backend.asciiToUtf8Text(QStringLiteral("ATM-01")));
+    require(asciiDecoded.value("text").toString() == QStringLiteral("ATM-01"), "Backend ASCII decode mismatch.");
+
+    const QJsonObject asciiRejected = parseJsonObject(backend.utf8ToAsciiText(QString::fromUtf8(u8"س")));
+    require(!asciiRejected.value("ok").toBool(true), "Backend ASCII conversion should reject non-ASCII input.");
+
+    const QJsonObject ansiEncoded = requireOk(backend.utf8ToAnsiText(QStringLiteral("ATM-01")));
+    require(ansiEncoded.value("text").toString() == QStringLiteral("ATM-01"), "Backend ANSI encode mismatch.");
+
+    const QJsonObject ansiDecoded = requireOk(backend.ansiToUtf8Text(QStringLiteral("ATM-01")));
+    require(ansiDecoded.value("text").toString() == QStringLiteral("ATM-01"), "Backend ANSI decode mismatch.");
+
+#ifdef _WIN32
+    if (GetACP() == 1256) {
+        const QString phrase = QString::fromUtf8(u8"سلام چطوری");
+        const QJsonObject ansiPhraseEncoded = requireOk(backend.utf8ToAnsiText(phrase));
+        const QJsonObject ansiPhraseDecoded = requireOk(backend.ansiToUtf8Text(ansiPhraseEncoded.value("text").toString()));
+        require(ansiPhraseDecoded.value("text").toString() == phrase, "Backend ANSI Persian round-trip mismatch.");
+    }
+#endif
 }
 
 void testBackendSaveLoad() {

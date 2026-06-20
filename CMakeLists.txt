@@ -23,12 +23,14 @@ set(BUFFERX_CORE_SOURCES
 
 qt_add_executable(BufferX WIN32
     main.cpp
+    assets/appicon.rc
     ${BUFFERX_CORE_SOURCES}
 )
 
 qt_add_resources(BufferX "resources"
     PREFIX "/"
     FILES
+        assets/bank.png
         ui/Main.qml
         data/packagers.xml
 )

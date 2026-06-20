@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -10,6 +11,7 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName("BufferX");
     QCoreApplication::setOrganizationName("BufferX");
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/bank.png")));
 
     Backend backend;
     QQmlApplicationEngine engine;

@@ -161,6 +161,14 @@ Field definitions include:
 - crypto tooling is an operator utility, not a full HSM or key-management stack
 - there is no installer/package flow yet
 
+## License
+
+This repository is proprietary.
+
+Copyright (c) 2026 Amirsalar Saberi rad. All rights reserved.
+
+Website: https://amirsrad.ir
+
 ## Status
 
 BufferX is no longer just a parser prototype. It is now a multi-tool desktop utility for ISO 8583 decoding/building, MAC work, crypto transforms, TLV inspection, and IranSystem conversion.

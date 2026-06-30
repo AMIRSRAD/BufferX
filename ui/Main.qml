@@ -55,6 +55,7 @@ ApplicationWindow {
     property bool cryptoOpen: false
     property bool tlvOpen: false
     property bool iranSystemOpen: false
+    property bool infoOpen: false
     property int settingsWidth: 320
     property int cursorLine: 1
     property int cursorCol: 1
@@ -421,6 +422,7 @@ ApplicationWindow {
         cryptoOpen = exceptName === "crypto" ? cryptoOpen : false
         tlvOpen = exceptName === "tlv" ? tlvOpen : false
         iranSystemOpen = exceptName === "iranSystem" ? iranSystemOpen : false
+        infoOpen = exceptName === "info" ? infoOpen : false
     }
 
     function toggleFieldHex(index) {
@@ -2400,6 +2402,85 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: infoPanel
+        width: 360
+        height: 220
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: infoButton.x
+        y: infoOpen ? (infoButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+
+            Label {
+                text: "Info"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                radius: 10
+                color: "#121922"
+                border.color: border
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    spacing: 10
+
+                    Label {
+                        text: "Creator"
+                        font.pixelSize: 11
+                        color: muted
+                    }
+
+                    Label {
+                        text: "Amirsalar Saberi rad"
+                        font.pixelSize: 15
+                        font.weight: Font.DemiBold
+                        color: ink
+                    }
+
+                    Label {
+                        text: "All rights, ownership, and licensing for this app belong to Amirsalar Saberi rad."
+                        color: ink
+                        font.pixelSize: 12
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+
+                    Text {
+                        text: "<a href=\"https://amirsrad.ir\">https://amirsrad.ir</a>"
+                        textFormat: Text.RichText
+                        color: accentCool
+                        font.pixelSize: 12
+                        wrapMode: Text.WrapAnywhere
+                        Layout.fillWidth: true
+                        onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                    }
+
+                    Item { Layout.fillHeight: true }
+                }
+            }
+        }
+    }
+
+    Rectangle {
         id: statusBar
         height: 32
         radius: 10
@@ -2536,6 +2617,26 @@ ApplicationWindow {
             iranSystemOpen = !iranSystemOpen
             if (iranSystemOpen) {
                 closeToolPanels("iranSystem")
+            }
+        }
+    }
+
+    AppButton {
+        id: infoButton
+        text: infoOpen ? "Info v" : "Info >"
+        anchors.left: iranSystemButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("info")
+            infoOpen = !infoOpen
+            if (infoOpen) {
+                closeToolPanels("info")
             }
         }
     }

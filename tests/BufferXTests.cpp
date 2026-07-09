@@ -27,7 +27,9 @@
 #include "Mac.h"
 #include "Packager.h"
 #include "PackagerLoader.h"
+#include "PinBlock.h"
 #include "Tlv.h"
+#include "RsaSha.h"
 
 namespace {
 
@@ -531,6 +533,53 @@ void testCryptoHandling() {
     require(decrypted.bytes == input, "DES round-trip mismatch.");
 }
 
+void testPinBlockHandling() {
+    const PinBlockResult created = pinblock::createIso0("1234", "43219876543210987");
+    require(created.ok, "PIN block creation failed: " + created.error);
+    require(toHex(created.bytes, true) == "0412AC89ABCDEF67",
+            "Unexpected ISO-0 PIN block: " + toHex(created.bytes, true));
+
+    const PinBlockResult decoded = pinblock::decodeIso0(created.bytes, "43219876543210987");
+    require(decoded.ok, "PIN block decode failed: " + decoded.error);
+    require(decoded.pin == "1234", "Decoded PIN mismatch.");
+}
+
+void testRsaShaHandling() {
+    const std::string payload = "hello rsa sha";
+    const std::string privateKeyPem = R"(-----BEGIN PRIVATE KEY-----
+MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAL9rOr/E8fmx7TNh
+b6JzrcELtG8mSN1uG7Wh9CaTQQuV0i+ErQuKFA/knAzSBuBBoCIg6qv1NQ95ZYpt
+Oc+N5Dk+okFj2ERu4VsBJJ60rABHWjlpm7MUCCTSL7gpov8shZIBqzfITmMfmD6K
+4mNIl2d3aj+WRQWuZ7DFwzlc7Yb9AgMBAAECgYEAlCyCRq5CjYIA1pQnIT6gkt3n
+p16gat/wDTK31yCH6lroYCY4+cTB8OeLMJVoAzJpreGDJudiUn8rbfNNG/B/Z8Xv
+iH/we4JUSU1owWqC3xMC3pG8DJFWUadyrU9Mg4NJTYKha0P2oeevOuFKip1d5JlW
+bDiuZzDzWtV4OArN0OECQQDdutMBCJI9Ytm2IcJPVh9u9ibkl9ojMAmas72rD7fy
+xSafJ9MlzH1BKnWSrYsS/rWGfv0yQWljj1senesB+BRVAkEA3QEYFo7TGH28Hk5v
+Hlaz8xnRu6160lxJgxChorZTQHLrq5aGHAlA4tGBc6uWdmruWSiiPPaY0ZtU9Rl6
+7bGQCQJAPPMhE3SmtmcYz38CKcrTwy24zTeMyAVpbnQgHAirGPnmvvM0kHxgpewk
++5fm1ebcQUdhFFJ0xOBgPM9ODXGDLQJAE2kRMIoCyFfiudaxs7xxuZw+63jlHKy2
+WCiRybSxwytUv5FM3hGB/WnhMMOVR3lEzdffx/LwoRg/cfd28IFz4QJBAJDLRFXb
+tPhzR+WbPFY0RI82b3qz2pJP75pYHIzE4sd/z9QbjPNbo/cmWn10BXjHt1KKoSE0
+6CNF8VkenqbZ5ss=
+-----END PRIVATE KEY-----
+)";
+    const std::string publicKeyPem = R"(-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/azq/xPH5se0zYW+ic63BC7Rv
+Jkjdbhu1ofQmk0ELldIvhK0LihQP5JwM0gbgQaAiIOqr9TUPeWWKbTnPjeQ5PqJB
+Y9hEbuFbASSetKwAR1o5aZuzFAgk0i+4KaL/LIWSAas3yE5jH5g+iuJjSJdnd2o/
+lkUFrmewxcM5XO2G/QIDAQAB
+-----END PUBLIC KEY-----
+)";
+
+    const RsaShaResult signedResult = rsasha::signBase64(payload, privateKeyPem, "sha256");
+    require(signedResult.ok, "RSA-SHA sign failed: " + signedResult.error);
+    require(!signedResult.base64.empty(), "RSA-SHA Base64 signature should not be empty.");
+
+    const RsaShaResult verified = rsasha::verifyBase64(payload, publicKeyPem, signedResult.base64, "sha256");
+    require(verified.ok, "RSA-SHA verify failed: " + verified.error);
+    require(verified.verified, "RSA-SHA verify should match.");
+}
+
 void testBackendEncodeDecodeBridge() {
     Backend backend;
     const QJsonObject load = requireOk(backend.loadPackagerFile(sourcePath(QStringLiteral("data/packagers.xml"))));
@@ -637,6 +686,60 @@ void testBackendEncodeDecodeBridge() {
                                                                           QStringLiteral(""),
                                                                           false));
     require(cryptoEncrypted.value("rawHex").toString().size() == 16, "Backend crypto hex size mismatch.");
+
+    const QJsonObject pinBlock = requireOk(backend.createIso0PinBlock(QStringLiteral("1234"),
+                                                                      QStringLiteral("43219876543210987")));
+    require(pinBlock.value("pinBlockHex").toString() == QStringLiteral("0412AC89ABCDEF67"),
+            "Backend PIN block hex mismatch.");
+
+    const QJsonObject pinDecoded = requireOk(backend.decodeIso0PinBlock(QStringLiteral("0412AC89ABCDEF67"),
+                                                                        QStringLiteral("43219876543210987")));
+    require(pinDecoded.value("pin").toString() == QStringLiteral("1234"),
+            "Backend PIN decode mismatch.");
+
+    const QString pinKeyHex = QStringLiteral("0123456789ABCDEFFEDCBA9876543210");
+    const QJsonObject pinEncrypted = requireOk(backend.encryptPinBlock(QStringLiteral("0412AC89ABCDEF67"), pinKeyHex));
+    require(pinEncrypted.value("pinBlockHex").toString().size() == 16, "Encrypted PIN block hex size mismatch.");
+
+    const QJsonObject pinDecrypted = requireOk(backend.decryptPinBlock(pinEncrypted.value("pinBlockHex").toString(),
+                                                                       pinKeyHex));
+    require(pinDecrypted.value("pinBlockHex").toString() == QStringLiteral("0412AC89ABCDEF67"),
+            "Decrypted PIN block mismatch.");
+
+    const QString payload = QStringLiteral("hello rsa sha");
+    const QString privateKeyPem = QStringLiteral(
+R"(-----BEGIN PRIVATE KEY-----
+MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBAL9rOr/E8fmx7TNh
+b6JzrcELtG8mSN1uG7Wh9CaTQQuV0i+ErQuKFA/knAzSBuBBoCIg6qv1NQ95ZYpt
+Oc+N5Dk+okFj2ERu4VsBJJ60rABHWjlpm7MUCCTSL7gpov8shZIBqzfITmMfmD6K
+4mNIl2d3aj+WRQWuZ7DFwzlc7Yb9AgMBAAECgYEAlCyCRq5CjYIA1pQnIT6gkt3n
+p16gat/wDTK31yCH6lroYCY4+cTB8OeLMJVoAzJpreGDJudiUn8rbfNNG/B/Z8Xv
+iH/we4JUSU1owWqC3xMC3pG8DJFWUadyrU9Mg4NJTYKha0P2oeevOuFKip1d5JlW
+bDiuZzDzWtV4OArN0OECQQDdutMBCJI9Ytm2IcJPVh9u9ibkl9ojMAmas72rD7fy
+xSafJ9MlzH1BKnWSrYsS/rWGfv0yQWljj1senesB+BRVAkEA3QEYFo7TGH28Hk5v
+Hlaz8xnRu6160lxJgxChorZTQHLrq5aGHAlA4tGBc6uWdmruWSiiPPaY0ZtU9Rl6
+7bGQCQJAPPMhE3SmtmcYz38CKcrTwy24zTeMyAVpbnQgHAirGPnmvvM0kHxgpewk
++5fm1ebcQUdhFFJ0xOBgPM9ODXGDLQJAE2kRMIoCyFfiudaxs7xxuZw+63jlHKy2
+WCiRybSxwytUv5FM3hGB/WnhMMOVR3lEzdffx/LwoRg/cfd28IFz4QJBAJDLRFXb
+tPhzR+WbPFY0RI82b3qz2pJP75pYHIzE4sd/z9QbjPNbo/cmWn10BXjHt1KKoSE0
+6CNF8VkenqbZ5ss=
+-----END PRIVATE KEY-----
+)");
+    const QString publicKeyPem = QStringLiteral(
+R"(-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC/azq/xPH5se0zYW+ic63BC7Rv
+Jkjdbhu1ofQmk0ELldIvhK0LihQP5JwM0gbgQaAiIOqr9TUPeWWKbTnPjeQ5PqJB
+Y9hEbuFbASSetKwAR1o5aZuzFAgk0i+4KaL/LIWSAas3yE5jH5g+iuJjSJdnd2o/
+lkUFrmewxcM5XO2G/QIDAQAB
+-----END PUBLIC KEY-----
+)");
+    const QJsonObject rsaSigned = requireOk(backend.signRsaShaBase64(payload, privateKeyPem, QStringLiteral("SHA-256")));
+    require(!rsaSigned.value("signatureBase64").toString().isEmpty(), "Backend RSA-SHA signature should not be empty.");
+    const QJsonObject rsaVerified = requireOk(backend.verifyRsaShaBase64(payload,
+                                                                         publicKeyPem,
+                                                                         rsaSigned.value("signatureBase64").toString(),
+                                                                         QStringLiteral("SHA-256")));
+    require(rsaVerified.value("match").toBool(false), "Backend RSA-SHA verify should match.");
 
     const QJsonObject cryptoDecrypted = requireOk(backend.transformCrypto(QStringLiteral("des-ecb"),
                                                                           QStringLiteral("decrypt"),
@@ -745,6 +848,20 @@ void testTlvParsing() {
     require(flat.size() == 4, "Backend TLV flat entry count mismatch.");
     require(flat.at(0).toObject().value("description").toString().contains("Terminal firmware version"),
             "Backend TLV description mismatch.");
+
+    const QJsonObject builtPrimitive = requireOk(backend.buildTlv(QStringLiteral("9F33"),
+                                                                  QStringLiteral("TERM"),
+                                                                  false,
+                                                                  false));
+    require(builtPrimitive.value("rawHex").toString() == QStringLiteral("9F 33 04 54 45 52 4D"),
+            "Backend TLV primitive build mismatch.");
+
+    const QJsonObject builtComposite = requireOk(backend.buildTlv(QStringLiteral("E1"),
+                                                                  QStringLiteral("9F33045445524D"),
+                                                                  true,
+                                                                  true));
+    require(builtComposite.value("rawHex").toString() == QStringLiteral("E1 07 9F 33 04 54 45 52 4D"),
+            "Backend TLV composite build mismatch.");
 }
 
 void runTest(const char* name, const std::function<void()>& test) {
@@ -772,6 +889,8 @@ int main(int argc, char* argv[]) {
         runTest("Bitmap-only packager layouts", testBitmapOnlyPackagerLayouts);
         runTest("MAC handling", testMacHandling);
         runTest("Crypto handling", testCryptoHandling);
+        runTest("PIN block handling", testPinBlockHandling);
+        runTest("RSA-SHA handling", testRsaShaHandling);
         runTest("Backend encode/decode bridge", testBackendEncodeDecodeBridge);
         runTest("Backend save/load", testBackendSaveLoad);
         runTest("TLV parsing", testTlvParsing);

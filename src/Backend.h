@@ -32,6 +32,17 @@ public:
     Q_INVOKABLE QString utf8ToAnsiText(const QString& text) const;
     Q_INVOKABLE QString ansiHexToUtf8Text(const QString& hexText) const;
     Q_INVOKABLE QString utf8ToAnsiHex(const QString& text) const;
+    Q_INVOKABLE QString createIso0PinBlock(const QString& pin, const QString& pan) const;
+    Q_INVOKABLE QString decodeIso0PinBlock(const QString& pinBlockHex, const QString& pan) const;
+    Q_INVOKABLE QString encryptPinBlock(const QString& pinBlockHex, const QString& keyHex) const;
+    Q_INVOKABLE QString decryptPinBlock(const QString& encryptedPinBlockHex, const QString& keyHex) const;
+    Q_INVOKABLE QString signRsaShaBase64(const QString& payload,
+                                         const QString& privateKeyPem,
+                                         const QString& digestName) const;
+    Q_INVOKABLE QString verifyRsaShaBase64(const QString& payload,
+                                           const QString& publicKeyPem,
+                                           const QString& signatureBase64,
+                                           const QString& digestName) const;
 
     Q_INVOKABLE QString decodeBuffer(const QString& packagerName,
                                      const QString& payload,
@@ -76,6 +87,10 @@ public:
                                         bool usePadding);
 
     Q_INVOKABLE QString parseTlv(const QString& payload, bool inputHex);
+    Q_INVOKABLE QString buildTlv(const QString& tagHex,
+                                 const QString& payload,
+                                 bool valueIsHex,
+                                 bool constructed);
 
     Q_INVOKABLE QString saveBufferFile(const QString& path,
                                        const QString& packagerName,

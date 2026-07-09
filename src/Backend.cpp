@@ -5,6 +5,8 @@
 #include "IranSystem.h"
 #include "Mac.h"
 #include "PackagerLoader.h"
+#include "PinBlock.h"
+#include "RsaSha.h"
 #include "Tlv.h"
 
 #include <QFile>
@@ -531,6 +533,121 @@ QString Backend::utf8ToAnsiHex(const QString& text) const {
 #endif
 }
 
+QString Backend::createIso0PinBlock(const QString& pin, const QString& pan) const {
+    const PinBlockResult created = pinblock::createIso0(pin.toStdString(), pan.toStdString());
+    if (!created.ok) {
+        return jsonError(QString::fromStdString(created.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["pin"] = QString::fromStdString(created.pin);
+    obj["pinBlockHex"] = QString::fromStdString(toHex(created.bytes, true));
+    obj["length"] = static_cast<int>(created.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::decodeIso0PinBlock(const QString& pinBlockHex, const QString& pan) const {
+    const HexParseResult parsed = fromHex(pinBlockHex.toStdString());
+    if (!parsed.ok) {
+        return jsonError(QString::fromStdString(parsed.error));
+    }
+
+    const PinBlockResult decoded = pinblock::decodeIso0(parsed.bytes, pan.toStdString());
+    if (!decoded.ok) {
+        return jsonError(QString::fromStdString(decoded.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["pin"] = QString::fromStdString(decoded.pin);
+    obj["pinBlockHex"] = QString::fromStdString(toHex(decoded.bytes, true));
+    obj["length"] = static_cast<int>(decoded.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::encryptPinBlock(const QString& pinBlockHex, const QString& keyHex) const {
+    const HexParseResult parsed = fromHex(pinBlockHex.toStdString());
+    if (!parsed.ok) {
+        return jsonError(QString::fromStdString(parsed.error));
+    }
+
+    const CryptoResult encrypted = CryptoEngine::transform("3des-ecb",
+                                                           true,
+                                                           parsed.bytes,
+                                                           keyHex.toStdString(),
+                                                           std::string(),
+                                                           false);
+    if (!encrypted.ok) {
+        return jsonError(QString::fromStdString(encrypted.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["pinBlockHex"] = QString::fromStdString(toHex(encrypted.bytes, true));
+    obj["length"] = static_cast<int>(encrypted.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::decryptPinBlock(const QString& encryptedPinBlockHex, const QString& keyHex) const {
+    const HexParseResult parsed = fromHex(encryptedPinBlockHex.toStdString());
+    if (!parsed.ok) {
+        return jsonError(QString::fromStdString(parsed.error));
+    }
+
+    const CryptoResult decrypted = CryptoEngine::transform("3des-ecb",
+                                                           false,
+                                                           parsed.bytes,
+                                                           keyHex.toStdString(),
+                                                           std::string(),
+                                                           false);
+    if (!decrypted.ok) {
+        return jsonError(QString::fromStdString(decrypted.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["pinBlockHex"] = QString::fromStdString(toHex(decrypted.bytes, true));
+    obj["length"] = static_cast<int>(decrypted.bytes.size());
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::signRsaShaBase64(const QString& payload,
+                                  const QString& privateKeyPem,
+                                  const QString& digestName) const {
+    const RsaShaResult signedResult = rsasha::signBase64(payload.toUtf8().toStdString(),
+                                                         privateKeyPem.toStdString(),
+                                                         digestName.toStdString());
+    if (!signedResult.ok) {
+        return jsonError(QString::fromStdString(signedResult.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["signatureBase64"] = QString::fromStdString(signedResult.base64);
+    obj["digest"] = digestName;
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
+QString Backend::verifyRsaShaBase64(const QString& payload,
+                                    const QString& publicKeyPem,
+                                    const QString& signatureBase64,
+                                    const QString& digestName) const {
+    const RsaShaResult verifiedResult = rsasha::verifyBase64(payload.toUtf8().toStdString(),
+                                                             publicKeyPem.toStdString(),
+                                                             signatureBase64.toStdString(),
+                                                             digestName.toStdString());
+    if (!verifiedResult.ok) {
+        return jsonError(QString::fromStdString(verifiedResult.error));
+    }
+
+    QJsonObject obj;
+    obj["ok"] = true;
+    obj["match"] = verifiedResult.verified;
+    obj["digest"] = digestName;
+    return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+}
+
 QString Backend::decodeBuffer(const QString& packagerName,
                               const QString& payload,
                               bool inputHex,
@@ -821,6 +938,72 @@ QString Backend::parseTlv(const QString& payload, bool inputHex) {
         QJsonObject obj;
         obj["ok"] = true;
         obj["rawHex"] = QString::fromStdString(tlvtool::toHex(std::vector<uint8_t>(bytes.begin(), bytes.end()), ' '));
+        obj["tree"] = nodeArray;
+        obj["flat"] = flatArray;
+        obj["treeText"] = QString::fromStdString(tlvtool::buildTreeText(nodes));
+        obj["inlineText"] = QString::fromStdString(tlvtool::buildInlineText(nodes));
+        return QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    } catch (const std::exception& ex) {
+        return jsonError(QString::fromStdString(ex.what()));
+    }
+}
+
+QString Backend::buildTlv(const QString& tagHex,
+                          const QString& payload,
+                          bool valueIsHex,
+                          bool constructed) {
+    const HexParseResult tagParsed = fromHex(tagHex.toStdString());
+    if (!tagParsed.ok) {
+        return jsonError(QStringLiteral("Invalid tag hex: %1").arg(QString::fromStdString(tagParsed.error)));
+    }
+    if (tagParsed.bytes.empty()) {
+        return jsonError(QStringLiteral("Tag hex must not be empty."));
+    }
+
+    tlvtool::Node node;
+    node.tag.assign(tagParsed.bytes.begin(), tagParsed.bytes.end());
+
+    try {
+        if (constructed) {
+            HexParseResult childParsed = fromHex(payload.toStdString());
+            if (!childParsed.ok) {
+                return jsonError(QStringLiteral("Constructed payload must be valid hex: %1")
+                                     .arg(QString::fromStdString(childParsed.error)));
+            }
+            const std::vector<uint8_t> childBytes(childParsed.bytes.begin(), childParsed.bytes.end());
+            node.children = tlvtool::parse(childBytes);
+        } else if (valueIsHex) {
+            HexParseResult valueParsed = fromHex(payload.toStdString());
+            if (!valueParsed.ok) {
+                return jsonError(QStringLiteral("Value must be valid hex: %1").arg(QString::fromStdString(valueParsed.error)));
+            }
+            node.value.assign(valueParsed.bytes.begin(), valueParsed.bytes.end());
+        } else {
+            const QByteArray utf8 = payload.toUtf8();
+            node.value.assign(utf8.begin(), utf8.end());
+        }
+
+        const std::vector<tlvtool::Node> nodes = { node };
+        const std::vector<uint8_t> encoded = node.encode();
+        const std::vector<tlvtool::FlatEntry> flatEntries = tlvtool::flatten(nodes);
+        QJsonArray nodeArray;
+        nodeArray.append(tlvNodeToJson(node, QString()));
+
+        QJsonArray flatArray;
+        for (const auto& entry : flatEntries) {
+            QJsonObject flatObj;
+            flatObj["path"] = QString::fromStdString(entry.path);
+            flatObj["tagHex"] = QString::fromStdString(tlvtool::toHex(entry.tag, ' '));
+            flatObj["length"] = static_cast<int>(entry.value.size());
+            flatObj["valueHex"] = QString::fromStdString(tlvtool::toHex(entry.value, ' '));
+            flatObj["valueText"] = QString::fromStdString(tlvtool::toAsciiDebug(entry.value));
+            flatObj["description"] = QString::fromStdString(entry.description);
+            flatArray.append(flatObj);
+        }
+
+        QJsonObject obj;
+        obj["ok"] = true;
+        obj["rawHex"] = QString::fromStdString(tlvtool::toHex(encoded, ' '));
         obj["tree"] = nodeArray;
         obj["flat"] = flatArray;
         obj["treeText"] = QString::fromStdString(tlvtool::buildTreeText(nodes));

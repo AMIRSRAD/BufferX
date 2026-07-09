@@ -42,6 +42,7 @@ ApplicationWindow {
     property string macVerifyStatus: ""
     property string tlvTreeText: ""
     property string tlvInlineText: ""
+    property string tlvOutputHex: ""
     property string iranSystemOutputText: ""
     property string iranSystemOutputMeta: ""
     property real intro: 0
@@ -52,10 +53,13 @@ ApplicationWindow {
     property bool encodingGuard: false
     property bool settingsOpen: false
     property bool macOpen: false
+    property bool pinOpen: false
     property bool cryptoOpen: false
+    property bool rsaOpen: false
     property bool tlvOpen: false
     property bool iranSystemOpen: false
     property bool infoOpen: false
+    property string rsaVerifyStatus: ""
     property int settingsWidth: 320
     property int cursorLine: 1
     property int cursorCol: 1
@@ -419,7 +423,9 @@ ApplicationWindow {
     function closeToolPanels(exceptName) {
         settingsOpen = exceptName === "settings" ? settingsOpen : false
         macOpen = exceptName === "mac" ? macOpen : false
+        pinOpen = exceptName === "pin" ? pinOpen : false
         cryptoOpen = exceptName === "crypto" ? cryptoOpen : false
+        rsaOpen = exceptName === "rsa" ? rsaOpen : false
         tlvOpen = exceptName === "tlv" ? tlvOpen : false
         iranSystemOpen = exceptName === "iranSystem" ? iranSystemOpen : false
         infoOpen = exceptName === "info" ? infoOpen : false
@@ -842,6 +848,120 @@ ApplicationWindow {
         cryptoOutput.text = cryptoOutputMode.currentIndex === 0 ? (response.text || "") : (response.rawHex || "")
     }
 
+    function createPinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.createIso0PinBlock(pinClearPin.text, pinPan.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinClearBlock.text = response.pinBlockHex || ""
+    }
+
+    function decodePinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.decodeIso0PinBlock(pinClearBlock.text, pinPan.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinClearPin.text = response.pin || ""
+    }
+
+    function encryptPinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.encryptPinBlock(pinClearBlock.text, pinKey.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinEncryptedBlock.text = response.pinBlockHex || ""
+    }
+
+    function decryptPinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.decryptPinBlock(pinEncryptedBlock.text, pinKey.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinClearBlock.text = response.pinBlockHex || ""
+    }
+
+    function signRsaSha() {
+        lastError = ""
+        rsaVerifyStatus = ""
+        var response = parseJsonSafe(backend.signRsaShaBase64(
+                                         rsaPayload.text,
+                                         rsaPrivateKey.text,
+                                         rsaDigest.currentText))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        rsaSignature.text = response.signatureBase64 || ""
+    }
+
+    function verifyRsaSha() {
+        lastError = ""
+        rsaVerifyStatus = ""
+        var response = parseJsonSafe(backend.verifyRsaShaBase64(
+                                         rsaPayload.text,
+                                         rsaPublicKey.text,
+                                         rsaSignature.text,
+                                         rsaDigest.currentText))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        rsaVerifyStatus = response.match ? "Match" : "Mismatch"
+    }
+
+    function loadPinField52() {
+        lastError = ""
+        var idx = fieldIndexById(52)
+        if (idx < 0) {
+            lastError = "Field 52 is not present."
+            return
+        }
+        pinEncryptedBlock.text = fieldModel.get(idx).value || ""
+    }
+
+    function applyPinField52() {
+        lastError = ""
+        if (!pinEncryptedBlock.text.length) {
+            lastError = "Encrypted PIN block is empty."
+            return
+        }
+        var idx = fieldIndexById(52)
+        if (idx >= 0) {
+            fieldModel.set(idx, {
+                               "fieldId": fieldModel.get(idx).fieldId,
+                               "desc": fieldModel.get(idx).desc,
+                               "type": fieldModel.get(idx).type,
+                               "value": pinEncryptedBlock.text,
+                               "showHex": false
+                           })
+            return
+        }
+
+        var def = findFieldDef(52)
+        var insertIndex = fieldModel.count
+        for (var i = 0; i < fieldModel.count; ++i) {
+            if (fieldModel.get(i).fieldId > 52) {
+                insertIndex = i
+                break
+            }
+        }
+        fieldModel.insert(insertIndex, {
+            fieldId: 52,
+            desc: def ? def.desc : "PIN DATA",
+            type: def ? def.type : "Binary",
+            value: pinEncryptedBlock.text,
+            showHex: false
+        })
+    }
+
     function loadTlvField() {
         lastError = ""
         var idx = fieldIndexById(tlvFieldId.value)
@@ -859,6 +979,23 @@ ApplicationWindow {
             lastError = response.error
             return
         }
+        tlvOutputHex = response.rawHex || ""
+        tlvTreeText = response.treeText || ""
+        tlvInlineText = response.inlineText || ""
+    }
+
+    function buildTlvInput() {
+        lastError = ""
+        var response = parseJsonSafe(backend.buildTlv(
+                                         tlvTagInput.text,
+                                         tlvInput.text,
+                                         tlvValueMode.currentIndex === 0,
+                                         tlvConstructed.checked))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        tlvOutputHex = response.rawHex || ""
         tlvTreeText = response.treeText || ""
         tlvInlineText = response.inlineText || ""
     }
@@ -2126,9 +2263,305 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: pinPanel
+        width: 390
+        height: 420
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: pinButton.x
+        y: pinOpen ? (pinButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "PIN"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            Label {
+                text: "ISO-0 PIN block tools with 3DES-ECB encrypt/decrypt."
+                font.pixelSize: 11
+                color: muted
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+
+            TextField {
+                id: pinPan
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "PAN"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: pinClearPin
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "Clear PIN"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: pinClearBlock
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "Clear ISO-0 PIN block hex"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: pinKey
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "PIN key hex (16 or 24 bytes for 3DES)"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: pinEncryptedBlock
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "Encrypted PIN block hex"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Create"
+                    Layout.fillWidth: true
+                    onClicked: createPinBlock()
+                }
+                AppButton {
+                    text: "Decode"
+                    Layout.fillWidth: true
+                    onClicked: decodePinBlock()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Encrypt"
+                    Layout.fillWidth: true
+                    onClicked: encryptPinBlock()
+                }
+                AppButton {
+                    text: "Decrypt"
+                    Layout.fillWidth: true
+                    onClicked: decryptPinBlock()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    text: "Load F52"
+                    Layout.fillWidth: true
+                    onClicked: loadPinField52()
+                }
+                AppButton {
+                    text: "Apply F52"
+                    Layout.fillWidth: true
+                    onClicked: applyPinField52()
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: rsaPanel
+        width: 470
+        height: 520
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: rsaButton.x
+        y: rsaOpen ? (rsaButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "RSA-SHA"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ComboBox {
+                    id: rsaDigest
+                    model: ["SHA-256", "SHA-1", "SHA-512"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+                AppButton {
+                    text: "Sign"
+                    Layout.preferredWidth: 72
+                    onClicked: signRsaSha()
+                }
+                AppButton {
+                    text: "Verify"
+                    Layout.preferredWidth: 72
+                    onClicked: verifyRsaSha()
+                }
+            }
+
+            TextArea {
+                id: rsaPayload
+                Layout.fillWidth: true
+                Layout.preferredHeight: 80
+                placeholderText: "Payload text"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            TextArea {
+                id: rsaPrivateKey
+                Layout.fillWidth: true
+                Layout.preferredHeight: 110
+                placeholderText: "Private key PEM"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            TextArea {
+                id: rsaPublicKey
+                Layout.fillWidth: true
+                Layout.preferredHeight: 90
+                placeholderText: "Public key PEM"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            TextArea {
+                id: rsaSignature
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                placeholderText: "Base64 signature"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.WrapAnywhere
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                text: rsaVerifyStatus
+                font.pixelSize: 11
+                color: rsaVerifyStatus === "Match" ? "#63E6BE"
+                      : (rsaVerifyStatus === "Mismatch" ? "#E18A74" : muted)
+                Layout.fillWidth: true
+            }
+        }
+    }
+
+    Rectangle {
         id: tlvPanel
         width: 460
-        height: 520
+        height: 600
         radius: 18
         color: card
         border.color: border
@@ -2157,6 +2590,17 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                ComboBox {
+                    id: tlvMode
+                    model: ["Parse", "Build"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
                 SpinBox {
                     id: tlvFieldId
                     from: 0
@@ -2164,30 +2608,99 @@ ApplicationWindow {
                     value: 48
                     editable: true
                     Layout.preferredWidth: 90
+                    visible: tlvMode.currentIndex === 0
                 }
                 ComboBox {
                     id: tlvInputMode
                     model: ["Hex In", "Text In"]
                     Layout.fillWidth: true
                     Layout.preferredHeight: 30
+                    visible: tlvMode.currentIndex === 0
+                }
+                TextField {
+                    id: tlvTagInput
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 32
+                    visible: tlvMode.currentIndex === 1
+                    placeholderText: "Tag hex"
+                    color: ink
+                    font.pixelSize: 13
+                    placeholderTextColor: muted
+                    selectByMouse: true
+                    background: Rectangle {
+                        radius: 8
+                        color: "#121922"
+                        border.color: border
+                    }
+                }
+                ComboBox {
+                    id: tlvValueMode
+                    model: ["Hex Value", "Text Value"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    visible: tlvMode.currentIndex === 1
                 }
                 AppButton {
                     text: "Load Field"
+                    visible: tlvMode.currentIndex === 0
                     onClicked: loadTlvField()
                 }
                 AppButton {
-                    text: "Parse"
-                    onClicked: parseTlvInput()
+                    text: tlvMode.currentIndex === 0 ? "Parse" : "Build"
+                    onClicked: {
+                        if (tlvMode.currentIndex === 0) {
+                            parseTlvInput()
+                        } else {
+                            buildTlvInput()
+                        }
+                    }
                 }
+            }
+
+            CheckBox {
+                id: tlvConstructed
+                text: "Constructed TLV (input is child TLV hex)"
+                checked: false
+                visible: tlvMode.currentIndex === 1
+                Layout.fillWidth: true
             }
 
             TextArea {
                 id: tlvInput
                 Layout.fillWidth: true
                 Layout.preferredHeight: 96
-                placeholderText: "TLV input"
+                placeholderText: tlvMode.currentIndex === 0
+                                 ? "TLV input"
+                                 : (tlvConstructed.checked ? "Child TLV hex payload" :
+                                    (tlvValueMode.currentIndex === 0 ? "Value hex" : "Value text"))
                 color: ink
                 font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.Wrap
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                    border.width: 1
+                }
+            }
+
+            Label {
+                text: "Encoded"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            TextArea {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 64
+                readOnly: true
+                text: tlvOutputHex
+                placeholderText: "Encoded TLV hex"
+                color: ink
+                font.pixelSize: 12
                 placeholderTextColor: muted
                 wrapMode: TextArea.Wrap
                 selectByMouse: true
@@ -2562,9 +3075,29 @@ ApplicationWindow {
     }
 
     AppButton {
+        id: pinButton
+        text: pinOpen ? "PIN v" : "PIN >"
+        anchors.left: macButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("pin")
+            pinOpen = !pinOpen
+            if (pinOpen) {
+                closeToolPanels("pin")
+            }
+        }
+    }
+
+    AppButton {
         id: cryptoButton
         text: cryptoOpen ? "Crypto v" : "Crypto >"
-        anchors.left: macButton.right
+        anchors.left: pinButton.right
         anchors.bottom: statusBar.bottom
         anchors.leftMargin: 8
         anchors.bottomMargin: 4
@@ -2582,9 +3115,29 @@ ApplicationWindow {
     }
 
     AppButton {
+        id: rsaButton
+        text: rsaOpen ? "RSA v" : "RSA >"
+        anchors.left: cryptoButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("rsa")
+            rsaOpen = !rsaOpen
+            if (rsaOpen) {
+                closeToolPanels("rsa")
+            }
+        }
+    }
+
+    AppButton {
         id: tlvButton
         text: tlvOpen ? "TLV v" : "TLV >"
-        anchors.left: cryptoButton.right
+        anchors.left: rsaButton.right
         anchors.bottom: statusBar.bottom
         anchors.leftMargin: 8
         anchors.bottomMargin: 4

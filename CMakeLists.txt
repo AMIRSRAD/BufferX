@@ -12,6 +12,8 @@ find_package(OpenSSL REQUIRED)
 set(BUFFERX_CORE_SOURCES
     src/Backend.cpp
     src/Crypto.cpp
+    src/PinBlock.cpp
+    src/RsaSha.cpp
     src/Iso8583.cpp
     src/Mac.cpp
     src/Packager.cpp

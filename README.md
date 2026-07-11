@@ -1,6 +1,6 @@
 # BufferX
 
-BufferX is a Qt 6 desktop workbench for ISO 8583 buffers and nearby operator tasks.
+BufferX is a Qt 6 desktop workbench for ISO 8583 buffers and banking-adjacent operator tasks.
 
 It is built around the practical workflow of:
 
@@ -9,8 +9,10 @@ It is built around the practical workflow of:
 - switching between text and hex handling
 - applying or removing message length headers
 - calculating and verifying MAC values
+- creating, decoding, encrypting, and decrypting PIN blocks
 - running standalone crypto transforms
-- parsing TLV payloads
+- signing and verifying RSA-SHA payloads with Base64 signatures
+- parsing and building TLV payloads
 - working with IranSystem text conversion
 
 ## Screenshot
@@ -19,7 +21,7 @@ It is built around the practical workflow of:
 
 ## Current Feature Set
 
-- Qt/QML desktop UI
+- Qt/QML desktop UI with embedded application icon
 - XML-driven packager definitions from `data/packagers.xml`
 - ISO 8583 encode/decode support for:
   - `MTI + bitmap + fields`
@@ -30,6 +32,12 @@ It is built around the practical workflow of:
 - optional ASCII and binary length headers
 - buffer save/load as JSON
 - MAC panel for calculate and verify flows
+- PIN panel for:
+  - ISO-0 PIN block creation
+  - ISO-0 PIN block decode
+  - 3DES-ECB PIN block encryption
+  - 3DES-ECB PIN block decryption
+  - field 52 load/apply helpers
 - crypto panel for:
   - `DES-ECB`
   - `DES-CBC`
@@ -39,8 +47,19 @@ It is built around the practical workflow of:
   - `AES-128-CBC`
   - `AES-256-ECB`
   - `AES-256-CBC`
-- TLV parsing panel
+- RSA-SHA panel for:
+  - PEM private/public keys
+  - `SHA-1`
+  - `SHA-256`
+  - `SHA-512`
+  - Base64 signature output/input
+- TLV panel for:
+  - TLV parsing
+  - single-node TLV building
+  - constructed TLV building from child TLV hex
+  - tree and flat views
 - IranSystem conversion panel with UTF-8 / ANSI handling
+- in-app info/license panel
 - automated backend and integration-style tests
 
 ## Build
@@ -80,13 +99,19 @@ Release executable:
 
 `cmake-build-release/BufferX.exe`
 
+The repo also currently has a second local release tree:
+
+```powershell
+cmake --build cmake-build-release-vs2026 --target BufferX --config Release
+```
+
 ## Tests
 
 Build and run:
 
 ```powershell
 cmake --build cmake-build-release --target BufferXTests --config Release
-ctest --test-dir cmake-build-release --output-on-failure -C Release
+cmake-build-release\BufferXTests.exe
 ```
 
 Coverage currently includes:
@@ -96,8 +121,10 @@ Coverage currently includes:
 - ISO 8583 encode/decode paths
 - packager layout handling
 - MAC calculation and verification paths
-- crypto backend paths
-- TLV parsing
+- PIN block creation/decode/encrypt/decrypt paths
+- DES/AES crypto backend paths
+- RSA-SHA sign/verify paths
+- TLV parse and build paths
 - IranSystem conversion paths
 - save/load buffer persistence
 
@@ -140,14 +167,20 @@ Field definitions include:
   - packager types and XML loader
 - `src/Mac.*`
   - MAC engine
+- `src/PinBlock.*`
+  - ISO-0 PIN block support
 - `src/Crypto.*`
   - standalone cipher transforms
+- `src/RsaSha.*`
+  - RSA-SHA sign/verify support
 - `src/Tlv.*`
-  - TLV parsing helpers
+  - TLV parsing and encoding helpers
 - `src/IranSystem.*`
   - IranSystem conversion support
 - `src/Hex.*`
   - hex utilities
+- `assets/`
+  - application icon assets
 - `tests/BufferXTests.cpp`
   - test harness
 - `ss/`
@@ -158,6 +191,9 @@ Field definitions include:
 - some binary and BCD semantics are still simplified for workstation use
 - not every historical ISO 8583 dialect is modeled
 - MAC behavior is practical and useful, but not every network-specific rule is implemented
+- PIN support currently focuses on ISO-0 and 3DES-ECB PIN block handling
+- RSA-SHA support expects PEM keys and Base64 signatures
+- TLV build support is currently a practical single-node/constructed-payload builder, not a full nested visual editor
 - crypto tooling is an operator utility, not a full HSM or key-management stack
 - there is no installer/package flow yet
 
@@ -171,4 +207,4 @@ Website: https://amirsrad.ir
 
 ## Status
 
-BufferX is no longer just a parser prototype. It is now a multi-tool desktop utility for ISO 8583 decoding/building, MAC work, crypto transforms, TLV inspection, and IranSystem conversion.
+BufferX is no longer just a parser prototype. It is now a multi-tool desktop utility for ISO 8583 decoding/building, MAC work, PIN block handling, crypto transforms, RSA-SHA signatures, TLV inspection/building, and IranSystem conversion.

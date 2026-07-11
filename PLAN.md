@@ -1,90 +1,124 @@
-# BufferX Task Plan
+# BufferX Status and Roadmap
 
-## Goal
+## Current Goal
 
-Bring BufferX from a functional prototype to a reliable ISO 8583 tool with clearer protocol coverage, safer parsing, and test protection.
+Keep BufferX as a complete desktop workbench for ISO 8583 buffer handling and related banking/operator utilities.
 
-## Task 1: Add Test Coverage
+The app is now beyond the original parser prototype. It includes the core ISO 8583 workflow plus dedicated tools for MAC, PIN blocks, crypto transforms, RSA-SHA signatures, TLV parsing/building, and IranSystem conversion.
 
-- Create unit tests for `Hex`, `Packager`, `PackagerLoader`, and `Iso8583Codec`.
-- Add encode/decode round-trip tests for representative packagers such as `SLM`, `SLMLink`, and one non-standard table packager.
-- Add failure-case tests for malformed hex, invalid length headers, missing field definitions, and truncated buffers.
-- Add save/load buffer file tests for JSON persistence behavior.
-- Wire tests into CMake so they run through a normal build/test flow.
+## Completed Work
 
-## Task 2: Replace Regex-Based XML Parsing
+### Core Parser and Packagers
 
-- Replace the regex parser in [src/PackagerLoader.cpp](C:\Users\a.saberi\CLionProjects\BufferX\src\PackagerLoader.cpp:43) with a real XML parser from Qt.
-- Preserve current packager attributes and field extraction behavior.
-- Add validation for missing required attributes and invalid integer values.
-- Improve parse errors so the user can see which packager or field entry is malformed.
+- Added automated tests wired through CMake.
+- Replaced fragile XML parsing with Qt XML loading.
+- Added explicit packager field type mapping and clearer unsupported-type handling.
+- Added numeric validation paths.
+- Improved codec behavior around packager metadata and non-default layouts.
+- Preserved the main paste-buffer workflow for decoding, editing, and rebuilding buffers.
 
-## Task 3: Expand Packager Field Type Support
+### UI Workflow
 
-- Add internal support for currently unmapped XML field types such as `IFA_HHHHCHAR`, `IFA_LLLLCHAR`, `IFA_LLLLLLCHAR`, and `IFA_LLLLBINARY`.
-- Review all field types present in [data/packagers.xml](C:\Users\a.saberi\CLionProjects\BufferX\data\packagers.xml:1) and make the mapping explicit.
-- Decide which types are truly supported, partially supported, or intentionally rejected.
-- Return clear errors for unsupported types instead of silently treating them as `Unknown`.
+- Restored a visible main buffer paste area.
+- Added footer navigation for the main tool sections.
+- Added visible field decoding and field editing flow.
+- Added JSON buffer save/load workflow.
+- Improved text sizing and contrast for dark UI use.
+- Embedded the application icon in the executable and window.
 
-## Task 4: Implement Real Numeric Validation
+### Operator Tools
 
-- Enforce digit-only validation for numeric field types during encode.
-- Implement `allowNumericSanitize` in [src/Iso8583.cpp](C:\Users\a.saberi\CLionProjects\BufferX\src\Iso8583.cpp:425) so the QML dialog path does real work.
-- Add tests covering strict rejection and sanitize-enabled behavior.
-- Make error messages identify the exact field that failed validation.
+- Added MAC calculation and verification.
+- Added PIN handling:
+  - ISO-0 PIN block creation
+  - ISO-0 PIN block decode
+  - 3DES-ECB PIN block encryption
+  - 3DES-ECB PIN block decryption
+  - field 52 load/apply helpers
+- Added encryption/decryption tools:
+  - DES-ECB
+  - DES-CBC
+  - 3DES-ECB
+  - 3DES-CBC
+  - AES-128-ECB
+  - AES-128-CBC
+  - AES-256-ECB
+  - AES-256-CBC
+- Added RSA-SHA signing and verification:
+  - PEM private/public key input
+  - SHA-1, SHA-256, and SHA-512
+  - Base64 signature output/input
+- Added TLV handling:
+  - parse TLV hex
+  - build primitive TLV nodes
+  - build constructed TLV nodes from child TLV hex
+  - tree and flat inspection views
+- Added IranSystem conversion with UTF-8 and ANSI-oriented handling.
 
-## Task 5: Honor Packager Metadata in the Codec
+### Documentation and Repository
 
-- Review how `BitmapIndex`, `SecondPartBitmap`, `FieldCount`, `LenFormat`, `MacMethod`, and `MacSize` are supposed to affect message layout.
-- Remove assumptions in the codec that every message is `MTI + ASCII-hex bitmap + fields`.
-- Support packagers with `BitmapIndex="-1"` and other table/subfield layouts where applicable.
-- Define which metadata is required for decode and encode, and fail explicitly when a packager definition is incompatible with the current codec.
+- Added GitHub README with feature list, build steps, tests, screenshots, layout, limits, and ownership details.
+- Added proprietary license file.
+- Added creator/info section in the app:
+  - Amirsalar Saberi rad
+  - https://amirsrad.ir
+- Added screenshot folder for README images.
 
-## Task 6: Clarify Binary and BCD Semantics
+## Build and Test
 
-- Distinguish ASCII numeric, binary, BCD, and hex-encoded-on-the-wire behavior in the internal type model.
-- Revisit mappings like `IFB_LLNUM_BCD` and `IFB_LLNUM_PAN_HC`, which are currently treated as text-style LLNUM.
-- Decide whether binary-oriented packagers should emit true binary bytes or continue using ASCII hex wire encoding.
-- Document the chosen wire format rules and apply them consistently in both decode and encode.
+### Debug Build
 
-## Task 7: Add MAC Handling
+```powershell
+cmake -S . -B cmake-build-debug
+cmake --build cmake-build-debug --target BufferX --config Debug
+```
 
-- Define how MAC fields should be encoded, excluded from MAC input, or verified on decode.
-- Use `MacMethod` and `MacSize` from the packager where applicable.
-- If MAC computation is out of scope, explicitly mark it unsupported in the UI and backend responses instead of implying support through metadata.
+### Release Build
 
-## Task 8: Improve Decode and Encode Errors
+```powershell
+cmake -S . -B cmake-build-release
+cmake --build cmake-build-release --target BufferX --config Release
+```
 
-- Include field id, byte offset, expected length, remaining bytes, and a short raw context snippet in codec errors.
-- Differentiate user input errors from internal packager-definition problems.
-- Standardize backend JSON error payloads so the UI can react predictably.
+### Secondary Release Tree
 
-## Task 9: Expose Buffer File Workflow in the UI
+```powershell
+cmake --build cmake-build-release-vs2026 --target BufferX --config Release
+```
 
-- Add visible UI actions for opening and saving buffer JSON files using the existing backend methods.
-- Show the current buffer file name or path in the interface.
-- Support switching between saved buffers if multi-buffer behavior is intended.
-- Verify that load restores packager, header settings, raw mode, and field values correctly.
+### Tests
 
-## Task 10: Add Project Documentation
+```powershell
+cmake --build cmake-build-release --target BufferXTests --config Release
+cmake-build-release\BufferXTests.exe
+```
 
-- Add a `README.md` that explains what BufferX does, how to build it, and what message formats it currently supports.
-- Document the packager XML format and any constraints the codec expects.
-- Call out current limitations clearly, especially around binary fields, non-standard packagers, and MAC behavior.
-- Add a short contributor section describing where core logic lives and how to run tests.
+## Current Limitations
 
-## Suggested Order
+- Binary and BCD field semantics are still simplified for workstation use.
+- Not every historical ISO 8583 dialect is modeled.
+- MAC handling is practical, but not every network-specific MAC scope rule is represented.
+- PIN support currently focuses on ISO-0 and 3DES-ECB PIN block handling.
+- RSA-SHA expects PEM keys and Base64 signatures.
+- TLV build support is useful for primitive and constructed payloads, but it is not yet a full nested visual editor.
+- Crypto tools are operator utilities, not a replacement for an HSM or complete key-management stack.
+- No installer or packaged release workflow exists yet.
 
-1. Add tests first.
-2. Replace XML parsing and expand field type support.
-3. Fix numeric validation and binary/BCD semantics.
-4. Rework codec assumptions around packager metadata.
-5. Add MAC handling, UI workflow improvements, and documentation.
+## Next Tasks
 
-## Completion Criteria
+1. Add a nested TLV builder/editor with add/remove/reorder child nodes.
+2. Extend PIN handling with ISO-1, ISO-3, and ISO-4 formats.
+3. Add optional PVV and IBM 3624 PIN verification helpers.
+4. Add key-file load helpers for RSA private/public keys.
+5. Add clearer MAC profile presets for common network rules.
+6. Tighten binary and BCD wire-format behavior and document exact field encoding rules.
+7. Add installer/release packaging for Windows.
+8. Expand screenshots and usage examples in the README.
 
-- Supported packager types are explicit and tested.
-- Encode/decode behavior is deterministic for supported formats.
-- Unsupported formats fail loudly with actionable errors.
-- The UI exposes the main workflows already present in the backend.
-- The repository has enough tests and documentation to change the codec safely.
+## Quality Bar
+
+- Main workflows should remain paste-first and fast.
+- Supported formats must be explicit and tested.
+- Unsupported formats should fail with actionable errors.
+- UI sections should stay separate and discoverable.
+- Documentation should match the actual released app state.

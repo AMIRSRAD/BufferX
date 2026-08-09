@@ -145,6 +145,80 @@ struct NumberExtraction {
     std::vector<QByteArray> numbers;
 };
 
+struct EngineCharMapEntry {
+    bool connectPrev;
+    bool connectNext;
+    unsigned char single;
+    unsigned char previous;
+    unsigned char next;
+    unsigned char both;
+};
+
+const std::unordered_map<unsigned int, EngineCharMapEntry> kAtmEngineCharMap = {
+    {0x20, {false, false, 0x20, 0, 0, 0}}, {0x3A, {false, false, 0x3A, 0, 0, 0}},
+    {0x30, {false, false, 0x80, 0, 0, 0}}, {0x31, {false, false, 0x81, 0, 0, 0}},
+    {0x32, {false, false, 0x82, 0, 0, 0}}, {0x33, {false, false, 0x83, 0, 0, 0}},
+    {0x34, {false, false, 0x84, 0, 0, 0}}, {0x35, {false, false, 0x85, 0, 0, 0}},
+    {0x36, {false, false, 0x86, 0, 0, 0}}, {0x37, {false, false, 0x87, 0, 0, 0}},
+    {0x38, {false, false, 0x88, 0, 0, 0}}, {0x39, {false, false, 0x89, 0, 0, 0}},
+    {0x061F, {false, false, 0x8C, 0, 0, 0}}, {0x0622, {false, false, 0x8D, 0, 0, 0}},
+    {0x0621, {false, false, 0x8F, 0, 0, 0}}, {0x0627, {true, false, 0x90, 0x91, 0, 0}},
+    {0x0628, {true, true, 0x92, 0x92, 0x93, 0x93}}, {0x067E, {true, true, 0x94, 0x94, 0x95, 0x95}},
+    {0x062A, {true, true, 0x96, 0x96, 0x97, 0x97}}, {0x062B, {true, true, 0x98, 0x98, 0x99, 0x99}},
+    {0x062C, {true, true, 0x9A, 0x9A, 0x9B, 0x9B}}, {0x0686, {true, true, 0x9C, 0x9C, 0x9D, 0x9D}},
+    {0x062D, {true, true, 0x9E, 0x9E, 0x9F, 0x9F}}, {0x062E, {true, true, 0xA0, 0xA0, 0xA1, 0xA1}},
+    {0x062F, {true, false, 0xA2, 0xA2, 0, 0}}, {0x0630, {true, false, 0xA3, 0xA3, 0, 0}},
+    {0x0631, {true, false, 0xA4, 0xA4, 0, 0}}, {0x0632, {true, false, 0xA5, 0xA5, 0, 0}},
+    {0x0698, {true, false, 0xA6, 0xA6, 0, 0}}, {0x0633, {true, true, 0xA7, 0xA7, 0xA8, 0xA8}},
+    {0x0634, {true, true, 0xA9, 0xA9, 0xAA, 0xAA}}, {0x0635, {true, true, 0xAB, 0xAB, 0xAC, 0xAC}},
+    {0x0636, {true, true, 0xAD, 0xAD, 0xAE, 0xAE}}, {0x0637, {true, true, 0xAF, 0xAF, 0xAF, 0xAF}},
+    {0x0638, {true, true, 0xE0, 0xE0, 0xE0, 0xE0}}, {0x0639, {true, true, 0xE1, 0xE2, 0xE4, 0xE3}},
+    {0x063A, {true, true, 0xE5, 0xE6, 0xE8, 0xE7}}, {0x200C, {true, true, 0xE5, 0xE6, 0xE8, 0xE7}},
+    {0x0641, {true, true, 0xE9, 0xE9, 0xEA, 0xEA}}, {0x0642, {true, true, 0xEB, 0xEB, 0xEC, 0xEC}},
+    {0x06A9, {true, true, 0xED, 0xED, 0xEE, 0xEE}}, {0x06AF, {true, true, 0xEF, 0xEF, 0xF0, 0xF0}},
+    {0x0644, {true, true, 0xF1, 0xF1, 0xF3, 0xF3}}, {0x0645, {true, true, 0xF4, 0xF4, 0xF5, 0xF5}},
+    {0x0646, {true, true, 0xF6, 0xF6, 0xF7, 0xF7}}, {0x0648, {true, false, 0xF8, 0xF8, 0, 0}},
+    {0x0647, {true, true, 0xF9, 0xF9, 0xFB, 0xFA}}, {0x06CC, {true, true, 0xFC, 0xFC, 0xFE, 0xFE}},
+    {0x064A, {true, true, 0xFC, 0xFC, 0xFE, 0xFE}}, {0x0649, {true, true, 0xFC, 0xFC, 0xFE, 0xFE}},
+};
+
+QChar atmEngineIranSystemChar(unsigned char value) {
+    if (value < 0x80) return QChar(value);
+    if (value <= 0x89) return QChar(0x06F0 + value - 0x80);
+    static const std::array<ushort, 48> boxDrawing = {
+        0x2591, 0x2592, 0x2593, 0x2502, 0x2524, 0x2561, 0x2562, 0x2556,
+        0x2555, 0x2563, 0x2551, 0x2557, 0x255D, 0x255C, 0x255B, 0x2510,
+        0x2514, 0x2534, 0x252C, 0x251C, 0x2500, 0x253C, 0x255E, 0x255F,
+        0x255A, 0x2554, 0x2569, 0x2566, 0x2560, 0x2550, 0x256C, 0x2567,
+        0x2568, 0x2564, 0x2565, 0x2559, 0x2558, 0x2552, 0x2553, 0x256B,
+        0x256A, 0x2518, 0x250C, 0x2588, 0x2584, 0x258C, 0x2590, 0x2580,
+    };
+    if (value >= 0xB0 && value <= 0xDF) return QChar(boxDrawing[value - 0xB0]);
+    switch (value) {
+    case 0x8A: return QChar(0x060C); case 0x8B: return QChar(0x0640); case 0x8C: return QChar(0x061F);
+    case 0x8D: return QChar(0x0627); case 0x8E: return QChar(0x0626); case 0x8F: return QChar(0x0621);
+    case 0x90: case 0x91: return QChar(0x0627); case 0x92: case 0x93: return QChar(0x0628);
+    case 0x94: case 0x95: return QChar(0x067E); case 0x96: case 0x97: return QChar(0x062A);
+    case 0x98: case 0x99: return QChar(0x062B); case 0x9A: case 0x9B: return QChar(0x062C);
+    case 0x9C: case 0x9D: return QChar(0x0686); case 0x9E: case 0x9F: return QChar(0x062D);
+    case 0xA0: case 0xA1: return QChar(0x062E); case 0xA2: return QChar(0x062F);
+    case 0xA3: return QChar(0x0630); case 0xA4: return QChar(0x0631); case 0xA5: return QChar(0x0632);
+    case 0xA6: return QChar(0x0698); case 0xA7: case 0xA8: return QChar(0x0633);
+    case 0xA9: case 0xAA: return QChar(0x0634); case 0xAB: case 0xAC: return QChar(0x0635);
+    case 0xAD: case 0xAE: return QChar(0x0636); case 0xAF: return QChar(0x0637);
+    case 0xE0: return QChar(0x0638); case 0xE1: return QChar(0x200C);
+    case 0xE2: case 0xE3: case 0xE4: return QChar(0x0639);
+    case 0xE5: case 0xE6: case 0xE7: case 0xE8: return QChar(0x063A);
+    case 0xE9: case 0xEA: return QChar(0x0641); case 0xEB: case 0xEC: return QChar(0x0642);
+    case 0xED: case 0xEE: return QChar(0x06A9); case 0xEF: case 0xF0: return QChar(0x06AF);
+    case 0xF1: case 0xF2: case 0xF3: return QChar(0x0644); case 0xF4: case 0xF5: return QChar(0x0645);
+    case 0xF6: case 0xF7: return QChar(0x0646); case 0xF8: return QChar(0x0648);
+    case 0xF9: case 0xFA: case 0xFB: return QChar(0x0647);
+    case 0xFC: case 0xFD: case 0xFE: return QChar(0x06CC); case 0xFF: return QChar(' ');
+    default: return QChar(0x061F);
+    }
+}
+
 NumberExtraction excludeNumbers(const std::vector<unsigned char>& bytes) {
     NumberExtraction result;
     size_t index = 0;
@@ -466,6 +540,86 @@ ConversionResult fromUnicodeToText(const QString& text, bool convertNumbers) {
     result.bytes.clear();
     return result;
 #endif
+}
+
+ConversionResult toAtmEngineUnicode(const std::vector<unsigned char>& inputBytes) {
+    ConversionResult result;
+    QString output;
+    output.reserve(static_cast<int>(inputBytes.size()));
+    for (unsigned char value : inputBytes) output.append(atmEngineIranSystemChar(value));
+    result.ok = true;
+    result.bytes = inputBytes;
+    result.text = output;
+    return result;
+}
+
+ConversionResult fromUnicodeAtmEngine(const QString& text, bool convertNumbers) {
+    ConversionResult result;
+    std::vector<unsigned char> shaped;
+    shaped.reserve(static_cast<size_t>(text.size()));
+    bool connectPrevious = false;
+
+    for (int i = 0; i < text.size(); ++i) {
+        const unsigned int currentCode = text.at(i).unicode();
+        const auto currentIt = kAtmEngineCharMap.find(currentCode);
+        if (currentIt == kAtmEngineCharMap.end()) {
+            shaped.push_back(static_cast<unsigned char>(currentCode & 0xFFu));
+            connectPrevious = false;
+            continue;
+        }
+
+        const EngineCharMapEntry& current = currentIt->second;
+        const EngineCharMapEntry* next = nullptr;
+        if (i + 1 < text.size()) {
+            const auto nextIt = kAtmEngineCharMap.find(text.at(i + 1).unicode());
+            if (nextIt != kAtmEngineCharMap.end()) next = &nextIt->second;
+        }
+        const bool connectNext = next && current.connectNext && next->connectPrev;
+        const unsigned char shapedChar = connectPrevious
+            ? (connectNext ? current.both : current.previous)
+            : (connectNext ? current.next : current.single);
+        shaped.push_back(shapedChar);
+        connectPrevious = connectNext;
+    }
+
+    std::vector<unsigned char> merged;
+    merged.reserve(shaped.size());
+    for (size_t i = 0; i < shaped.size(); ++i) {
+        if (i + 1 < shaped.size() && shaped[i] == 0xF3 && shaped[i + 1] == 0x91) {
+            merged.push_back(0xF2);
+            ++i;
+        } else {
+            merged.push_back(shaped[i]);
+        }
+    }
+
+    std::vector<unsigned char> output;
+    output.reserve(merged.size());
+    for (size_t i = 0; i < merged.size(); ++i) {
+        unsigned char current = merged[i];
+        if (!convertNumbers && current >= 0x80 && current <= 0x89) {
+            current = static_cast<unsigned char>('0' + current - 0x80);
+        }
+        if (current < 0x8D) {
+            output.push_back(current);
+            continue;
+        }
+
+        const size_t start = i;
+        size_t end = i;
+        while (end < merged.size() &&
+               (merged[end] >= 0x8D ||
+                (merged[end] == ' ' && end + 1 < merged.size() && merged[end + 1] >= 0x8D))) {
+            ++end;
+        }
+        for (size_t cursor = end; cursor-- > start;) output.push_back(merged[cursor]);
+        i = end - 1;
+    }
+
+    result.ok = true;
+    result.bytes = std::move(output);
+    result.text = text;
+    return result;
 }
 
 } // namespace iransystem

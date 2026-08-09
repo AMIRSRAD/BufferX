@@ -4,15 +4,20 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QTemporaryDir>
+#include <QHostAddress>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 #include <cstdlib>
 #include <exception>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #ifdef _WIN32
@@ -21,15 +26,7 @@
 #endif
 
 #include "Backend.h"
-#include "Crypto.h"
-#include "Hex.h"
-#include "Iso8583.h"
-#include "Mac.h"
-#include "Packager.h"
-#include "PackagerLoader.h"
-#include "PinBlock.h"
-#include "Tlv.h"
-#include "RsaSha.h"
+#include "BufferXCore.h"
 
 namespace {
 
@@ -533,6 +530,111 @@ void testCryptoHandling() {
     require(decrypted.bytes == input, "DES round-trip mismatch.");
 }
 
+void testLegacyEngineIsoCodec() {
+    const Packager packager = loadPackagerByName("INFOTECH");
+    const std::map<int, std::string> fields = {
+        {0, "0200"},
+        {2, "1234567890123456"},
+        {3, "400000"},
+        {4, "000000001000"},
+        {11, "123456"}
+    };
+
+    EncodeOptions encodeOptions;
+    encodeOptions.legacyEngine = true;
+    const EncodeResult encoded = Iso8583Codec::encode(fields, packager, encodeOptions);
+    require(encoded.ok, "Legacy INFOTECH encode failed: " + encoded.error);
+    require(toHex(encoded.bytes, true) ==
+                "02007020000000000000161234567890123456400000000000001000123456",
+            "Legacy INFOTECH wire bytes mismatch: " + toHex(encoded.bytes, true));
+
+    DecodeOptions decodeOptions;
+    decodeOptions.legacyEngine = true;
+    const DecodeResult decoded = Iso8583Codec::decode(encoded.bytes, packager, decodeOptions);
+    require(decoded.ok, "Legacy INFOTECH decode failed: " + decoded.error);
+    require(decoded.fields == fields, "Legacy INFOTECH round-trip mismatch.");
+
+    std::map<int, std::string> binaryFields = fields;
+    binaryFields[55] = "9F3303E0F8C8";
+    const EncodeResult binaryEncoded = Iso8583Codec::encode(binaryFields, packager, encodeOptions);
+    require(binaryEncoded.ok, "Legacy IFB variable binary encode failed: " + binaryEncoded.error);
+    const DecodeResult binaryDecoded = Iso8583Codec::decode(binaryEncoded.bytes, packager, decodeOptions);
+    require(binaryDecoded.ok && binaryDecoded.fields.at(55) == binaryFields.at(55),
+            "Legacy IFB variable binary round-trip mismatch.");
+
+    Backend backend;
+    requireOk(backend.loadPackagerFile(sourcePath(QStringLiteral("data/packagers.xml"))));
+    require(!backend.legacyEngineMode(), "Legacy mode must default off.");
+    backend.setLegacyEngineMode(true);
+    require(backend.legacyEngineMode(), "Legacy mode did not enable.");
+
+    const QString partialFields = QStringLiteral(
+        R"([{"id":0,"value":"0200"},{"id":2,"value":"4761739001010010"},{"id":3,"value":"000000"},{"id":4,"value":"0000000000001000"},{"id":5,"value":"9999999999999999"}])");
+    const QJsonObject partialMac = requireOk(backend.calculateMacForFields(
+        QStringLiteral("SHETAB7"), partialFields, 64,
+        QStringLiteral("0123456789ABCDEFFEDCBA9876543210"), false,
+        QStringLiteral("ascii"), 0, QStringLiteral("m1")));
+    const QString expectedScope = QStringLiteral("47617390010100100000000000000000001000");
+    require(partialMac.value("payloadHex").toString() == backend.utf8ToHex(expectedScope),
+            "Legacy PARTIAL MAC scope did not follow packager field flags.");
+}
+
+void testBankingTools() {
+    auto run = [](const std::string& operation,
+                  const std::string& input = {},
+                  const std::string& secondary = {},
+                  int parameter = 0) {
+        const BankingToolResult result = bankingtools::run(operation, input, secondary, parameter);
+        require(result.ok, operation + " failed: " + result.error);
+        return result.output;
+    };
+
+    require(run("BCD Encode Left", "123") == "0123", "BCD left padding mismatch.");
+    require(run("BCD Encode Right", "123") == "123F", "BCD right padding mismatch.");
+    require(run("BCD Decode Left", "0123", {}, 3) == "123", "BCD left decode mismatch.");
+    require(run("BCD Decode Right", "123F", {}, 3) == "123", "BCD right decode mismatch.");
+    require(run("XOR Hex", "FFFF00", "0F0FF0") == "F0F0F0", "Hex XOR mismatch.");
+    require(run("Base64 Encode Text", "Hello") == "SGVsbG8=", "Base64 encode mismatch.");
+    require(run("Base64 Decode Text", "SGVsbG8=") == "Hello", "Base64 decode mismatch.");
+    require(run("MD5", "hello") == "5D41402ABC4B2A76B9719D911017C592", "MD5 mismatch.");
+    require(run("Luhn Generate", "7992739871") == "79927398713", "Luhn generation mismatch.");
+    require(run("Luhn Check", "79927398713") == "VALID", "Luhn validation mismatch.");
+    const std::string parityKey = run("Adjust Odd Parity", "0001020304050607");
+    require(run("Check Odd Parity", parityKey) == "VALID", "DES key parity mismatch.");
+    require(run("KCV", "0123456789ABCDEF", {}, 3) == "D5D44F", "DES KCV mismatch.");
+#ifdef _WIN32
+    require(run("ASCII to EBCDIC", "A") == "C1", "ASCII/EBCDIC conversion mismatch.");
+    require(run("EBCDIC to ASCII", "C1") == "A", "EBCDIC/ASCII conversion mismatch.");
+#endif
+}
+
+void testAtmEngineIranSystem() {
+    QString phrase;
+    for (ushort code : {ushort(0x0633), ushort(0x0644), ushort(0x0627), ushort(0x0645), ushort(0x20),
+                        ushort(0x0686), ushort(0x0637), ushort(0x0648), ushort(0x0631), ushort(0x06CC)}) {
+        phrase.append(QChar(code));
+    }
+    const iransystem::ConversionResult encoded = iransystem::fromUnicodeAtmEngine(phrase, true);
+    require(encoded.ok, "ATM-engine ToIranSystem failed.");
+    require(toHex(encoded.bytes, true) == "FCA4F8AF9D20F4F2A8",
+            "ATM-engine ToIranSystem byte vector mismatch: " + toHex(encoded.bytes, true));
+
+    const iransystem::ConversionResult decoded = iransystem::toAtmEngineUnicode(encoded.bytes);
+    require(decoded.ok && decoded.text.size() == static_cast<int>(encoded.bytes.size()),
+            "ATM-engine FromIranSystem direct mapping mismatch.");
+    require(decoded.text.at(7) == QChar(0x0644),
+            "ATM-engine lam-alef historical decode behavior was not preserved.");
+
+    const iransystem::ConversionResult asciiDigits = iransystem::fromUnicodeAtmEngine(QStringLiteral("ATM 123"), false);
+    require(asciiDigits.ok && toHex(asciiDigits.bytes, true) == "41544D20313233",
+            "ATM-engine digit conversion toggle mismatch.");
+
+    Backend backend;
+    const QJsonObject backendEncoded = requireOk(backend.unicodeToAtmEngineIranSystem(phrase, true));
+    require(backendEncoded.value("rawHex").toString() == QStringLiteral("FCA4F8AF9D20F4F2A8"),
+            "Backend ATM-engine ToIranSystem mismatch.");
+}
+
 void testPinBlockHandling() {
     const PinBlockResult created = pinblock::createIso0("1234", "43219876543210987");
     require(created.ok, "PIN block creation failed: " + created.error);
@@ -542,6 +644,107 @@ void testPinBlockHandling() {
     const PinBlockResult decoded = pinblock::decodeIso0(created.bytes, "43219876543210987");
     require(decoded.ok, "PIN block decode failed: " + decoded.error);
     require(decoded.pin == "1234", "Decoded PIN mismatch.");
+
+    const PinBlockResult iso1 = pinblock::createIso1("9876");
+    require(iso1.ok, "ISO-1 creation failed: " + iso1.error);
+    const PinBlockResult iso1Decoded = pinblock::decodeIso1(iso1.bytes);
+    require(iso1Decoded.ok && iso1Decoded.pin == "9876", "ISO-1 round-trip mismatch.");
+
+    const PinBlockResult iso3 = pinblock::createIso3("4567", "43219876543210987");
+    require(iso3.ok, "ISO-3 creation failed: " + iso3.error);
+    const PinBlockResult iso3Decoded = pinblock::decodeIso3(iso3.bytes, "43219876543210987");
+    require(iso3Decoded.ok && iso3Decoded.pin == "4567", "ISO-3 round-trip mismatch.");
+
+    const std::string aesKey = "00112233445566778899AABBCCDDEEFF";
+    const PinBlockResult iso4 = pinblock::encryptIso4("123456", "43219876543210987", aesKey);
+    require(iso4.ok && iso4.bytes.size() == 16, "ISO-4 encryption failed: " + iso4.error);
+    const PinBlockResult iso4Decoded = pinblock::decryptIso4(iso4.bytes, "43219876543210987", aesKey);
+    require(iso4Decoded.ok && iso4Decoded.pin == "123456", "ISO-4 round-trip mismatch.");
+
+    Backend backend;
+    const QJsonObject backendIso4 = requireOk(backend.createPinBlock(QStringLiteral("ISO-4"),
+                                                                     QStringLiteral("1234"),
+                                                                     QStringLiteral("43219876543210987"),
+                                                                     QString::fromStdString(aesKey)));
+    require(backendIso4.value("encrypted").toBool(), "Backend ISO-4 result must be marked encrypted.");
+    const QJsonObject backendIso4Decoded = requireOk(backend.decodePinBlock(
+        QStringLiteral("ISO-4"), backendIso4.value("pinBlockHex").toString(),
+        QStringLiteral("43219876543210987"), QString::fromStdString(aesKey)));
+    require(backendIso4Decoded.value("pin").toString() == QStringLiteral("1234"),
+            "Backend ISO-4 round-trip mismatch.");
+
+    const std::string pvk = "0123456789ABCDEFFEDCBA9876543210";
+    const PinVerificationResult pvv = pinverification::visaPvv("1234", "4761739001010010", "1", pvk);
+    require(pvv.ok && pvv.value.size() == 4, "Visa PVV calculation failed: " + pvv.error);
+    const PinVerificationResult offset = pinverification::ibm3624Offset(
+        "1234", "4761739001010010", "0123456789012345", pvk);
+    require(offset.ok && offset.value.size() == 4 && offset.naturalPin.size() == 4,
+            "IBM 3624 offset calculation failed: " + offset.error);
+    const PinVerificationResult verified = pinverification::verifyIbm3624(
+        "1234", offset.value, "4761739001010010", "0123456789012345", pvk);
+    require(verified.ok && verified.value == "VALID", "IBM 3624 verification mismatch.");
+}
+
+void testAtmPinTranslation() {
+    const std::string pan = "43219876543210987";
+    const PinTranslationResult ansi = pintranslation::createAtmClearBlock("ANSI / ISO-0", "1234", pan);
+    require(ansi.ok, "ATM ANSI clear block creation failed: " + ansi.error);
+    require(toHex(ansi.clearBlock, true) == "0412B39ABCDEF678",
+            "ATM ANSI PAN-mask vector mismatch: " + toHex(ansi.clearBlock, true));
+
+    const PinTranslationResult iso1 = pintranslation::createAtmClearBlock("ISO-1", "1234", pan, 5);
+    require(iso1.ok && toHex(iso1.clearBlock, true) == "1412B33016745CD2",
+            "ATM ISO-1 repeated-filler vector mismatch.");
+
+    const std::string sourceKey = "0123456789ABCDEF";
+    const std::string destinationKey = "0123456789ABCDEFFEDCBA9876543210";
+    const CryptoResult sourceEncrypted = CryptoEngine::transform(
+        "des-ecb", true, ansi.clearBlock, sourceKey, std::string(), false);
+    require(sourceEncrypted.ok, "ATM source DES encryption failed: " + sourceEncrypted.error);
+
+    const PinTranslationResult translated = pintranslation::translate(
+        sourceEncrypted.bytes, pan, "ANSI / ISO-0", "DES", sourceKey,
+        "ANSI / ISO-0", "2-key 3DES", destinationKey);
+    require(translated.ok, "ATM DES to 3DES translation failed: " + translated.error);
+    const CryptoResult translatedClear = CryptoEngine::transform(
+        "3des-ecb", false, translated.translatedBlock, destinationKey, std::string(), false);
+    require(translatedClear.ok && translatedClear.bytes == ansi.clearBlock,
+            "Same-format ATM translation did not preserve the clear block.");
+
+    const PinTranslationResult changedFormat = pintranslation::translate(
+        sourceEncrypted.bytes, pan, "ANSI / ISO-0", "DES", sourceKey,
+        "ISO-1", "2-key 3DES", destinationKey);
+    require(changedFormat.ok, "ATM ANSI to ISO-1 translation failed: " + changedFormat.error);
+    const CryptoResult changedClear = CryptoEngine::transform(
+        "3des-ecb", false, changedFormat.translatedBlock, destinationKey, std::string(), false);
+    const PinTranslationResult changedDecoded = pintranslation::decodeAtmClearBlock("ISO-1", changedClear.bytes, pan);
+    require(changedDecoded.ok && changedDecoded.pin == "1234", "ATM format translation PIN mismatch.");
+
+    const PinTranslationResult tsn = pintranslation::translate(
+        sourceEncrypted.bytes, pan, "ANSI / ISO-0", "DES", sourceKey,
+        "ANSI / ISO-0", "TSN-DES", destinationKey);
+    require(tsn.ok, "ATM TSN-DES destination translation failed: " + tsn.error);
+    const CryptoResult derived = CryptoEngine::transform(
+        "des-ecb", true, ansi.clearBlock, destinationKey.substr(0, 16), std::string(), false);
+    const HexParseResult key2 = fromHex(destinationKey.substr(16));
+    const CryptoResult expectedTsn = CryptoEngine::transform(
+        "des-ecb", true, key2.bytes, toHex(derived.bytes, true), std::string(), false);
+    require(derived.ok && key2.ok && expectedTsn.ok && tsn.translatedBlock == expectedTsn.bytes,
+            "ATM TSN-DES algorithm mismatch.");
+
+    const PinTranslationResult tsnSourceRejected = pintranslation::translate(
+        tsn.translatedBlock, pan, "ANSI / ISO-0", "TSN-DES", destinationKey,
+        "ANSI / ISO-0", "DES", sourceKey);
+    require(!tsnSourceRejected.ok, "TSN-DES must be rejected as a translation source.");
+
+    Backend backend;
+    const QJsonObject backendTranslation = requireOk(backend.translateAtmPinBlock(
+        QString::fromStdString(toHex(sourceEncrypted.bytes, true)), QString::fromStdString(pan),
+        QStringLiteral("ANSI / ISO-0"), QStringLiteral("DES"), QString::fromStdString(sourceKey),
+        QStringLiteral("ANSI / ISO-0"), QStringLiteral("2-key 3DES"), QString::fromStdString(destinationKey)));
+    require(backendTranslation.value("translatedPinBlockHex").toString() ==
+                QString::fromStdString(toHex(translated.translatedBlock, true)),
+            "Backend ATM PIN translation mismatch.");
 }
 
 void testRsaShaHandling() {
@@ -578,6 +781,15 @@ lkUFrmewxcM5XO2G/QIDAQAB
     const RsaShaResult verified = rsasha::verifyBase64(payload, publicKeyPem, signedResult.base64, "sha256");
     require(verified.ok, "RSA-SHA verify failed: " + verified.error);
     require(verified.verified, "RSA-SHA verify should match.");
+
+    for (const std::string& padding : {std::string("OAEP SHA-256"), std::string("PKCS1 v1.5")}) {
+        const RsaCipherResult encrypted = rsasha::encryptBase64(payload, publicKeyPem, padding);
+        require(encrypted.ok, "RSA encrypt failed: " + encrypted.error);
+        require(!encrypted.base64.empty(), "RSA ciphertext should not be empty.");
+        const RsaCipherResult decrypted = rsasha::decryptBase64(encrypted.base64, privateKeyPem, padding);
+        require(decrypted.ok, "RSA decrypt failed: " + decrypted.error);
+        require(decrypted.plaintext == payload, "RSA encryption round-trip mismatch.");
+    }
 }
 
 void testBackendEncodeDecodeBridge() {
@@ -862,6 +1074,66 @@ void testTlvParsing() {
                                                                   true));
     require(builtComposite.value("rawHex").toString() == QStringLiteral("E1 07 9F 33 04 54 45 52 4D"),
             "Backend TLV composite build mismatch.");
+
+    const QJsonObject validTlv = requireOk(backend.validateTlv(QString::fromStdString(hex), true));
+    require(validTlv.value("valid").toBool(), "Backend TLV validation mismatch.");
+    const QJsonObject xml = requireOk(backend.tlvToXml(QString::fromStdString(hex), true));
+    require(xml.value("xml").toString().contains(QStringLiteral("<node tag=\"71\"")),
+            "TLV XML output is missing the root node.");
+    const QJsonObject xmlRoundTrip = requireOk(backend.xmlToTlv(xml.value("xml").toString()));
+    require(xmlRoundTrip.value("rawHex").toString().remove(' ') == QString::fromStdString(hex),
+            "TLV XML round-trip mismatch.");
+    const QJsonObject malformedXml = parseJsonObject(backend.xmlToTlv(
+        QStringLiteral("<tlv><node tag=\"9F33\"><node tag=\"81\" valueHex=\"01\"/></node></tlv>")));
+    require(!malformedXml.value("ok").toBool(true), "Primitive TLV XML must reject child nodes.");
+}
+
+void testTcpRequest() {
+    std::promise<quint16> portPromise;
+    std::future<quint16> portFuture = portPromise.get_future();
+    std::string serverError;
+    std::thread serverThread([&]() {
+        QTcpServer server;
+        if (!server.listen(QHostAddress::LocalHost, 0)) {
+            serverError = server.errorString().toStdString();
+            portPromise.set_value(0);
+            return;
+        }
+        portPromise.set_value(server.serverPort());
+        if (!server.waitForNewConnection(5000)) {
+            serverError = "Loopback server did not receive a connection.";
+            return;
+        }
+        QTcpSocket* client = server.nextPendingConnection();
+        QByteArray request;
+        while (request.size() < 8 && client->waitForReadyRead(5000)) request += client->readAll();
+        request += client->readAll();
+        if (request != QByteArray("00040200")) {
+            serverError = "Loopback server received incorrect framed request.";
+            return;
+        }
+        client->write(QByteArray("0004PONG"));
+        if (!client->waitForBytesWritten(5000)) serverError = "Loopback response write failed.";
+        client->disconnectFromHost();
+    });
+
+    const quint16 port = portFuture.get();
+    if (port == 0) {
+        serverThread.join();
+        require(false, "Loopback TCP server failed to start: " + serverError);
+    }
+    Backend backend;
+    const QJsonObject response = parseJsonObject(backend.sendTcpRequest(
+        QStringLiteral("127.0.0.1"), port, QStringLiteral("0200"), false,
+        QStringLiteral("ascii"), 4, 5000));
+    serverThread.join();
+    require(serverError.empty(), serverError);
+    require(response.value("ok").toBool(false),
+            "TCP request failed: " + response.value("error").toString().toStdString());
+    require(response.value("requestWireHex").toString() == QStringLiteral("3030303430323030"),
+            "TCP request framing mismatch.");
+    require(response.value("responseText").toString() == QStringLiteral("PONG"),
+            "TCP framed response body mismatch.");
 }
 
 void runTest(const char* name, const std::function<void()>& test) {
@@ -888,12 +1160,17 @@ int main(int argc, char* argv[]) {
         runTest("Sequential packager failures", testSequentialPackagerFailures);
         runTest("Bitmap-only packager layouts", testBitmapOnlyPackagerLayouts);
         runTest("MAC handling", testMacHandling);
+        runTest("Legacy ATM engine ISO codec", testLegacyEngineIsoCodec);
+        runTest("Banking utilities", testBankingTools);
+        runTest("ATM-engine IranSystem", testAtmEngineIranSystem);
         runTest("Crypto handling", testCryptoHandling);
         runTest("PIN block handling", testPinBlockHandling);
+        runTest("ATM PIN translation", testAtmPinTranslation);
         runTest("RSA-SHA handling", testRsaShaHandling);
         runTest("Backend encode/decode bridge", testBackendEncodeDecodeBridge);
         runTest("Backend save/load", testBackendSaveLoad);
         runTest("TLV parsing", testTlvParsing);
+        runTest("TCP request framing", testTcpRequest);
     } catch (const TestFailure& failure) {
         std::cerr << "[FAIL] " << failure.what() << '\n';
         return EXIT_FAILURE;

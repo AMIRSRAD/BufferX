@@ -29,12 +29,19 @@ The app is now beyond the original parser prototype. It includes the core ISO 85
 ### Operator Tools
 
 - Added MAC calculation and verification.
+- Added a default-off `Legacy ATM Engine` mode with engine-compatible IFB/IFA encoding,
+  binary bitmaps, packed MTI/length prefixes, framing profiles, and partial-MAC field scope.
 - Added PIN handling:
-  - ISO-0 PIN block creation
-  - ISO-0 PIN block decode
+  - ISO-0, ISO-1, and ISO-3 creation/decode
+  - AES ISO-4 encryption/decryption
   - 3DES-ECB PIN block encryption
   - 3DES-ECB PIN block decryption
   - field 52 load/apply helpers
+  - Visa PVV generation
+  - IBM 3624 offset calculation/verification
+  - AlmasPlus ANSI/ISO-1 encrypted PIN-block translation
+  - DES and two-key 3DES source/destination transforms
+  - destination-only TSN-DES compatibility
 - Added encryption/decryption tools:
   - DES-ECB
   - DES-CBC
@@ -48,12 +55,19 @@ The app is now beyond the original parser prototype. It includes the core ISO 85
   - PEM private/public key input
   - SHA-1, SHA-256, and SHA-512
   - Base64 signature output/input
+  - OAEP SHA-1/SHA-256 and PKCS#1 v1.5 RSA encryption/decryption
 - Added TLV handling:
   - parse TLV hex
   - build primitive TLV nodes
   - build constructed TLV nodes from child TLV hex
   - tree and flat inspection views
-- Added IranSystem conversion with UTF-8 and ANSI-oriented handling.
+  - validation and editable nested XML round trips
+- Added banking conversion/key tools for BCD, XOR, Base64, hashes, Luhn, parity,
+  random keys, KCV, and EBCDIC.
+- Added an ISO TCP tester with none/ASCII/binary framing and loopback integration tests.
+- Added IranSystem conversion with UTF-8, ANSI, and Hex handling.
+- Added an explicit ATM-engine IranSystem profile matching AlmasPlus `W2IS` shaping,
+  Persian-run justification, digit handling, lam-alef collapsing, and direct reverse mapping.
 
 ### Documentation and Repository
 
@@ -93,27 +107,21 @@ cmake --build cmake-build-release --target BufferXTests --config Release
 cmake-build-release\BufferXTests.exe
 ```
 
-## Current Limitations
+## Remaining Product Work
 
-- Binary and BCD field semantics are still simplified for workstation use.
-- Not every historical ISO 8583 dialect is modeled.
-- MAC handling is practical, but not every network-specific MAC scope rule is represented.
-- PIN support currently focuses on ISO-0 and 3DES-ECB PIN block handling.
-- RSA-SHA expects PEM keys and Base64 signatures.
-- TLV build support is useful for primitive and constructed payloads, but it is not yet a full nested visual editor.
-- Crypto tools are operator utilities, not a replacement for an HSM or complete key-management stack.
+- Add institution-specific ISO profiles as real host specifications become available.
+- RSA operations currently accept PEM text rather than loading key files directly.
+- Nested TLV editing is XML-based rather than a drag-and-drop tree.
+- Crypto and clear-PIN operations remain test tooling, not an HSM/SCD replacement.
 - No installer or packaged release workflow exists yet.
 
 ## Next Tasks
 
-1. Add a nested TLV builder/editor with add/remove/reorder child nodes.
-2. Extend PIN handling with ISO-1, ISO-3, and ISO-4 formats.
-3. Add optional PVV and IBM 3624 PIN verification helpers.
-4. Add key-file load helpers for RSA private/public keys.
-5. Add clearer MAC profile presets for common network rules.
-6. Tighten binary and BCD wire-format behavior and document exact field encoding rules.
-7. Add installer/release packaging for Windows.
-8. Expand screenshots and usage examples in the README.
+1. Add key-file load helpers for RSA private/public keys.
+2. Add institution-specific MAC presets when their specifications are supplied.
+3. Add a drag-and-drop TLV tree editor if XML editing is insufficient.
+4. Add installer/release packaging for Windows.
+5. Expand screenshots and usage examples in the README.
 
 ## Quality Bar
 

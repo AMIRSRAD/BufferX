@@ -133,7 +133,8 @@ PackagerLoadResult PackagerLoader::loadFromXml(const std::string& xml) {
                 return result;
             }
 
-            def.type = parseFieldType(readStringAttribute(fieldAttrs, "FieldType"));
+            def.sourceType = readStringAttribute(fieldAttrs, "FieldType");
+            def.type = parseFieldType(def.sourceType);
             def.desc = readStringAttribute(fieldAttrs, "FieldDesc");
             def.flags = readStringAttribute(fieldAttrs, "Flags");
             def.lengthDigits = lengthDigitsForFieldType(def.type);

@@ -70,8 +70,14 @@ FieldType parseFieldType(const std::string& typeName) {
     if (type == "IFA_LLLLCHAR" || type == "IFA_HHHHCHAR") {
         return FieldType::LlllChar;
     }
+    if (type == "IFA_LLLLLCHAR") {
+        return FieldType::LllllChar;
+    }
     if (type == "IFA_LLLLLLCHAR") {
         return FieldType::LlllllChar;
+    }
+    if (type == "IFA_L7CHAR") {
+        return FieldType::L7Char;
     }
     return FieldType::Unknown;
 }
@@ -101,8 +107,12 @@ std::string fieldTypeToString(FieldType type) {
             return "LLLCHAR";
         case FieldType::LlllChar:
             return "LLLLCHAR";
+        case FieldType::LllllChar:
+            return "LLLLLCHAR";
         case FieldType::LlllllChar:
             return "LLLLLLCHAR";
+        case FieldType::L7Char:
+            return "L7CHAR";
         case FieldType::Unknown:
         default:
             return "Unknown";
@@ -122,8 +132,12 @@ int lengthDigitsForFieldType(FieldType type) {
         case FieldType::LlllChar:
         case FieldType::BinaryLlll:
             return 4;
+        case FieldType::LllllChar:
+            return 5;
         case FieldType::LlllllChar:
             return 6;
+        case FieldType::L7Char:
+            return 7;
         default:
             return 0;
     }

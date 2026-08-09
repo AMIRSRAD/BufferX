@@ -3,6 +3,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <openssl/rsa.h>
 
 #include <algorithm>
 #include <cctype>
@@ -39,6 +40,30 @@ const EVP_MD* resolveDigest(const std::string& digestName) {
 using BioPtr = std::unique_ptr<BIO, decltype(&BIO_free)>;
 using PkeyPtr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
 using MdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
+using PkeyCtxPtr = std::unique_ptr<EVP_PKEY_CTX, decltype(&EVP_PKEY_CTX_free)>;
+
+bool configureRsaPadding(EVP_PKEY_CTX* ctx, const std::string& paddingName, std::string& error) {
+    const std::string normalized = normalizeDigestName(paddingName);
+    if (normalized == "pkcs1" || normalized == "pkcs1v15") {
+        if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0) {
+            error = "Failed to configure RSA PKCS#1 v1.5 padding.";
+            return false;
+        }
+        return true;
+    }
+    const EVP_MD* digest = normalized == "oaepsha256" ? EVP_sha256() : EVP_sha1();
+    if (normalized != "oaep" && normalized != "oaepsha1" && normalized != "oaepsha256") {
+        error = "Unsupported RSA encryption padding.";
+        return false;
+    }
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0 ||
+        EVP_PKEY_CTX_set_rsa_oaep_md(ctx, digest) <= 0 ||
+        EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, digest) <= 0) {
+        error = "Failed to configure RSA OAEP padding.";
+        return false;
+    }
+    return true;
+}
 
 PkeyPtr loadPrivateKey(const std::string& pem, std::string& error) {
     BioPtr bio(BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size())), &BIO_free);
@@ -218,6 +243,76 @@ RsaShaResult verifyBase64(const std::string& payload,
 
     result.ok = true;
     result.verified = verifyResult == 1;
+    return result;
+}
+
+RsaCipherResult encryptBase64(const std::string& payload,
+                              const std::string& publicKeyPem,
+                              const std::string& paddingName) {
+    RsaCipherResult result;
+    std::string keyError;
+    PkeyPtr publicKey = loadPublicKey(publicKeyPem, keyError);
+    if (!keyError.empty()) {
+        result.error = keyError;
+        return result;
+    }
+    PkeyCtxPtr ctx(EVP_PKEY_CTX_new(publicKey.get(), nullptr), &EVP_PKEY_CTX_free);
+    if (!ctx || EVP_PKEY_encrypt_init(ctx.get()) <= 0 || !configureRsaPadding(ctx.get(), paddingName, result.error)) {
+        if (result.error.empty()) result.error = "RSA encryption initialization failed.";
+        return result;
+    }
+    size_t outputSize = 0;
+    if (EVP_PKEY_encrypt(ctx.get(), nullptr, &outputSize,
+                         reinterpret_cast<const unsigned char*>(payload.data()), payload.size()) <= 0) {
+        result.error = "RSA payload is too large for the selected key and padding.";
+        return result;
+    }
+    std::vector<unsigned char> encrypted(outputSize);
+    if (EVP_PKEY_encrypt(ctx.get(), encrypted.data(), &outputSize,
+                         reinterpret_cast<const unsigned char*>(payload.data()), payload.size()) <= 0) {
+        result.error = "RSA encryption failed.";
+        return result;
+    }
+    encrypted.resize(outputSize);
+    result.base64 = toBase64(encrypted, result.error);
+    result.ok = result.error.empty();
+    return result;
+}
+
+RsaCipherResult decryptBase64(const std::string& ciphertextBase64,
+                              const std::string& privateKeyPem,
+                              const std::string& paddingName) {
+    RsaCipherResult result;
+    std::string base64Error;
+    const std::vector<unsigned char> encrypted = fromBase64(ciphertextBase64, base64Error);
+    if (!base64Error.empty()) {
+        result.error = base64Error;
+        return result;
+    }
+    std::string keyError;
+    PkeyPtr privateKey = loadPrivateKey(privateKeyPem, keyError);
+    if (!keyError.empty()) {
+        result.error = keyError;
+        return result;
+    }
+    PkeyCtxPtr ctx(EVP_PKEY_CTX_new(privateKey.get(), nullptr), &EVP_PKEY_CTX_free);
+    if (!ctx || EVP_PKEY_decrypt_init(ctx.get()) <= 0 || !configureRsaPadding(ctx.get(), paddingName, result.error)) {
+        if (result.error.empty()) result.error = "RSA decryption initialization failed.";
+        return result;
+    }
+    size_t outputSize = 0;
+    if (EVP_PKEY_decrypt(ctx.get(), nullptr, &outputSize, encrypted.data(), encrypted.size()) <= 0) {
+        result.error = "RSA decryption size calculation failed.";
+        return result;
+    }
+    std::vector<unsigned char> plaintext(outputSize);
+    if (EVP_PKEY_decrypt(ctx.get(), plaintext.data(), &outputSize, encrypted.data(), encrypted.size()) <= 0) {
+        result.error = "RSA decryption failed; check the key and padding mode.";
+        return result;
+    }
+    plaintext.resize(outputSize);
+    result.plaintext.assign(plaintext.begin(), plaintext.end());
+    result.ok = true;
     return result;
 }
 

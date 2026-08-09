@@ -21,6 +21,7 @@ struct LengthHeader {
 struct DecodeOptions {
     LengthHeader header;
     bool autoDetectHeader = false;
+    bool legacyEngine = false;
 };
 
 struct EncodeOptions {
@@ -28,6 +29,7 @@ struct EncodeOptions {
     bool autoDetectHeader = false;
     bool allowBinaryPadding = false;
     bool allowNumericSanitize = false;
+    bool legacyEngine = false;
 };
 
 struct DecodeResult {

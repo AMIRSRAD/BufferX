@@ -17,5 +17,7 @@ ConversionResult toUnicode(const std::vector<unsigned char>& bytes);
 ConversionResult fromUnicode(const QString& text, bool convertNumbers);
 ConversionResult toUnicodeFromText(const QString& iranSystemText);
 ConversionResult fromUnicodeToText(const QString& text, bool convertNumbers);
+ConversionResult toAtmEngineUnicode(const std::vector<unsigned char>& inputBytes);
+ConversionResult fromUnicodeAtmEngine(const QString& text, bool convertNumbers);
 
 } // namespace iransystem

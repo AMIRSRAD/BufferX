@@ -17,7 +17,9 @@ enum class FieldType {
     LlChar,
     LllChar,
     LlllChar,
+    LllllChar,
     LlllllChar,
+    L7Char,
     Unknown
 };
 
@@ -29,6 +31,7 @@ struct FieldDef {
     std::string flags;
     int lengthDigits = 0;
     bool variable = false;
+    std::string sourceType;
 };
 
 struct Packager {

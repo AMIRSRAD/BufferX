@@ -58,6 +58,8 @@ ApplicationWindow {
     property bool rsaOpen: false
     property bool tlvOpen: false
     property bool iranSystemOpen: false
+    property bool bankingToolsOpen: false
+    property bool networkOpen: false
     property bool infoOpen: false
     property string rsaVerifyStatus: ""
     property int settingsWidth: 320
@@ -428,6 +430,8 @@ ApplicationWindow {
         rsaOpen = exceptName === "rsa" ? rsaOpen : false
         tlvOpen = exceptName === "tlv" ? tlvOpen : false
         iranSystemOpen = exceptName === "iranSystem" ? iranSystemOpen : false
+        bankingToolsOpen = exceptName === "bankingTools" ? bankingToolsOpen : false
+        networkOpen = exceptName === "network" ? networkOpen : false
         infoOpen = exceptName === "info" ? infoOpen : false
     }
 
@@ -848,19 +852,94 @@ ApplicationWindow {
         cryptoOutput.text = cryptoOutputMode.currentIndex === 0 ? (response.text || "") : (response.rawHex || "")
     }
 
-    function createPinBlock() {
+    function runBankingUtility() {
         lastError = ""
-        var response = parseJsonSafe(backend.createIso0PinBlock(pinClearPin.text, pinPan.text))
+        var op = bankingOperation.currentText
+        var normalized = op.toLowerCase().split(" ").join("").split("-").join("")
+        var secondary = bankingSecondary.text
+        if (normalized === "md5" || normalized === "sha1" || normalized === "sha256" || normalized === "sha512") {
+            secondary = bankingInputMode.currentIndex === 1 ? "hex" : "text"
+        }
+        var response = parseJsonSafe(backend.runBankingUtility(op,
+                                                                bankingInput.text,
+                                                                secondary,
+                                                                bankingParameter.value))
         if (!response.ok) {
             lastError = response.error
             return
         }
-        pinClearBlock.text = response.pinBlockHex || ""
+        bankingOutput.text = response.output || ""
+    }
+
+    function sendNetworkRequest() {
+        lastError = ""
+        networkMeta.text = ""
+        var response = parseJsonSafe(backend.sendTcpRequest(
+                                         networkHost.text,
+                                         networkPort.value,
+                                         networkPayload.text,
+                                         networkInputMode.currentIndex === 0,
+                                         networkFraming.currentText.toLowerCase(),
+                                         networkHeaderSize.value,
+                                         networkTimeout.value))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        networkResponse.text = networkOutputMode.currentIndex === 0
+                             ? (response.responseHex || "")
+                             : (response.responseText || "")
+        networkMeta.text = (response.responseLength || 0) + " bytes in "
+                           + (response.elapsedMs || 0) + " ms\nWire: "
+                           + (response.responseWireHex || "")
+    }
+
+    function applyLegacyFraming() {
+        if (!legacyEngineMode.checked) {
+            return
+        }
+        if (activePackager === "HYPERCOM") {
+            headerEnabled.checked = true
+            headerAuto.checked = true
+            headerMode.currentIndex = 1
+            headerSize.value = 2
+        } else if (activePackager === "DATASET" || activePackager.indexOf("TABLE") === 0 ||
+                   activePackager.indexOf("AMNT") === 0 || activePackager.indexOf("STX") === 0 ||
+                   activePackager === "STMNT2003" || activePackager === "BIT121") {
+            headerEnabled.checked = false
+            headerAuto.checked = false
+        } else {
+            headerEnabled.checked = true
+            headerAuto.checked = true
+            headerMode.currentIndex = 0
+            headerSize.value = activePackager === "SLMLink" ? 7 : 4
+        }
+    }
+
+    function createPinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.createPinBlock(pinFormat.currentText,
+                                                             pinClearPin.text,
+                                                             pinPan.text,
+                                                             pinKey.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        if (response.encrypted) {
+            pinEncryptedBlock.text = response.pinBlockHex || ""
+        } else {
+            pinClearBlock.text = response.pinBlockHex || ""
+        }
     }
 
     function decodePinBlock() {
         lastError = ""
-        var response = parseJsonSafe(backend.decodeIso0PinBlock(pinClearBlock.text, pinPan.text))
+        var sourceBlock = pinFormat.currentIndex === 3 ? pinEncryptedBlock.text : pinClearBlock.text
+        var response = parseJsonSafe(backend.decodePinBlock(pinFormat.currentText,
+                                                             sourceBlock,
+                                                             pinPan.text,
+                                                             pinKey.text))
         if (!response.ok) {
             lastError = response.error
             return
@@ -886,6 +965,56 @@ ApplicationWindow {
             return
         }
         pinClearBlock.text = response.pinBlockHex || ""
+    }
+
+    function calculatePinVerification() {
+        lastError = ""
+        var response
+        if (pinTool.currentIndex === 1) {
+            response = parseJsonSafe(backend.calculateVisaPvv(pinClearPin.text, pinPan.text,
+                                                               pinPvki.text, pinKey.text))
+            if (response.ok) pinVerificationResult.text = response.pvv || ""
+        } else {
+            response = parseJsonSafe(backend.calculateIbm3624Offset(
+                                         pinClearPin.text, pinValidationData.text,
+                                         pinDecimalization.text, pinKey.text))
+            if (response.ok) {
+                pinOffset.text = response.offset || ""
+                pinVerificationResult.text = "Natural PIN: " + (response.naturalPin || "")
+            }
+        }
+        if (!response.ok) lastError = response.error
+    }
+
+    function verifyIbmPin() {
+        lastError = ""
+        var response = parseJsonSafe(backend.verifyIbm3624Pin(
+                                         pinClearPin.text, pinOffset.text,
+                                         pinValidationData.text, pinDecimalization.text,
+                                         pinKey.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinVerificationResult.text = response.status + " | Natural PIN: " + (response.naturalPin || "")
+    }
+
+    function translateAtmPinBlock() {
+        lastError = ""
+        var response = parseJsonSafe(backend.translateAtmPinBlock(
+                                         pinTranslateSourceBlock.text,
+                                         pinPan.text,
+                                         pinTranslateSourceFormat.currentText,
+                                         pinTranslateSourceAlgorithm.currentText,
+                                         pinTranslateSourceKey.text,
+                                         pinTranslateDestinationFormat.currentText,
+                                         pinTranslateDestinationAlgorithm.currentText,
+                                         pinTranslateDestinationKey.text))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        pinTranslateOutput.text = response.translatedPinBlockHex || ""
     }
 
     function signRsaSha() {
@@ -915,6 +1044,32 @@ ApplicationWindow {
             return
         }
         rsaVerifyStatus = response.match ? "Match" : "Mismatch"
+    }
+
+    function encryptRsa() {
+        lastError = ""
+        var response = parseJsonSafe(backend.encryptRsaBase64(rsaPayload.text,
+                                                               rsaPublicKey.text,
+                                                               rsaPadding.currentText))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        rsaSignature.text = response.ciphertextBase64 || ""
+        rsaVerifyStatus = "Encrypted"
+    }
+
+    function decryptRsa() {
+        lastError = ""
+        var response = parseJsonSafe(backend.decryptRsaBase64(rsaSignature.text,
+                                                               rsaPrivateKey.text,
+                                                               rsaPadding.currentText))
+        if (!response.ok) {
+            lastError = response.error
+            return
+        }
+        rsaPayload.text = response.plaintext || ""
+        rsaVerifyStatus = "Decrypted"
     }
 
     function loadPinField52() {
@@ -1000,6 +1155,32 @@ ApplicationWindow {
         tlvInlineText = response.inlineText || ""
     }
 
+    function convertTlvXml() {
+        lastError = ""
+        if (tlvMode.currentIndex === 2) {
+            var encoded = parseJsonSafe(backend.tlvToXml(tlvInput.text,
+                                                          tlvInputMode.currentIndex === 0))
+            if (!encoded.ok) {
+                lastError = encoded.error
+                return
+            }
+            tlvOutputHex = encoded.rawHex || ""
+            tlvInput.text = encoded.xml || ""
+            tlvTreeText = "XML is now editable in the input area."
+            tlvInlineText = ""
+            tlvMode.currentIndex = 3
+        } else {
+            var decoded = parseJsonSafe(backend.xmlToTlv(tlvInput.text))
+            if (!decoded.ok) {
+                lastError = decoded.error
+                return
+            }
+            tlvOutputHex = decoded.rawHex || ""
+            tlvTreeText = decoded.treeText || ""
+            tlvInlineText = ""
+        }
+    }
+
     function loadIranSystemField() {
         lastError = ""
         var idx = fieldIndexById(iranSystemFieldId.value)
@@ -1052,7 +1233,50 @@ ApplicationWindow {
         var direction = iranSystemDirection.currentText
         var response = { ok: false, error: "Unsupported conversion mode." }
 
-        if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "UTF-8") {
+        if (iranSystemProfile.currentIndex === 1) {
+            if (direction === "Encode IranSys") {
+                response = parseJsonSafe(backend.unicodeToAtmEngineIranSystem(
+                                             iranSystemInput.text,
+                                             iranSystemConvertDigits.checked))
+                if (response.ok && iranSystemTextEncoding.currentText === "ANSI") {
+                    var engineAnsi = convertAnsiHexToUtf8Text(response.rawHex || "")
+                    if (!engineAnsi.ok) {
+                        lastError = engineAnsi.error
+                        return
+                    }
+                    response.ansiDisplay = engineAnsi.text || ""
+                } else if (response.ok && iranSystemTextEncoding.currentText === "UTF-8") {
+                    var engineUtf8 = parseJsonSafe(backend.hexToUtf8(response.rawHex || ""))
+                    response.utf8Display = engineUtf8.ok ? (engineUtf8.text || "") : ""
+                } else if (response.ok) {
+                    response.text = response.rawHex || ""
+                }
+            } else if (iranSystemTextEncoding.currentText === "ANSI") {
+                var engineInputHex = convertUtf8ToAnsiHex(iranSystemInput.text)
+                if (!engineInputHex.ok) {
+                    lastError = engineInputHex.error
+                    return
+                }
+                response = parseJsonSafe(backend.atmEngineIranSystemToUnicode(
+                                             engineInputHex.rawHex || "", true))
+                if (response.ok) response.ansiDisplay = response.text || ""
+            } else {
+                response = parseJsonSafe(backend.atmEngineIranSystemToUnicode(
+                                             iranSystemInput.text,
+                                             iranSystemTextEncoding.currentText === "Hex"))
+            }
+
+            if (!response.ok) {
+                lastError = response.error
+                return
+            }
+            setIranSystemOutput(response)
+            return
+        }
+
+        if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "Hex") {
+            response = parseJsonSafe(backend.iranSystemToUnicode(iranSystemInput.text, true))
+        } else if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "UTF-8") {
             response = convertIranSystemToUtf8Text(iranSystemInput.text)
         } else if (direction === "Decode IranSys" && iranSystemTextEncoding.currentText === "ANSI") {
             response = convertIranSystemToUtf8Text(iranSystemInput.text)
@@ -1065,7 +1289,12 @@ ApplicationWindow {
                 response.ansiDisplay = decodedAnsiDisplay.text || ""
             }
         } else if (direction === "Encode IranSys") {
-            if (iranSystemTextEncoding.currentText === "ANSI") {
+            if (iranSystemTextEncoding.currentText === "Hex") {
+                response = parseJsonSafe(backend.unicodeToIranSystem(
+                                             iranSystemInput.text,
+                                             iranSystemConvertDigits.checked))
+                if (response.ok) response.text = response.rawHex || ""
+            } else if (iranSystemTextEncoding.currentText === "ANSI") {
                 var ansiResponse = parseJsonSafe(backend.utf8ToAnsiText(iranSystemInput.text))
                 if (!ansiResponse.ok) {
                     lastError = ansiResponse.error
@@ -1665,7 +1894,7 @@ ApplicationWindow {
     Rectangle {
         id: settingsPanel
         width: settingsWidth
-        height: 430
+        height: 472
         radius: 18
         color: card
         border.color: border
@@ -1758,6 +1987,20 @@ ApplicationWindow {
                 onActivated: {
                     activePackager = currentText
                     loadPackagerFields()
+                    applyLegacyFraming()
+                }
+            }
+
+            CheckBox {
+                id: legacyEngineMode
+                text: "Legacy ATM Engine"
+                checked: false
+                Layout.fillWidth: true
+                ToolTip.visible: hovered
+                ToolTip.text: "Use AlmasPlus packed BCD, binary bitmap, length-prefix, and field-flag rules"
+                onToggled: {
+                    backend.setLegacyEngineMode(checked)
+                    applyLegacyFraming()
                 }
             }
 
@@ -2264,8 +2507,8 @@ ApplicationWindow {
 
     Rectangle {
         id: pinPanel
-        width: 390
-        height: 420
+        width: 500
+        height: 630
         radius: 18
         color: card
         border.color: border
@@ -2285,18 +2528,39 @@ ApplicationWindow {
             spacing: 10
 
             Label {
-                text: "PIN"
+                text: "PIN Tools"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 color: ink
             }
 
             Label {
-                text: "ISO-0 PIN block tools with 3DES-ECB encrypt/decrypt."
+                text: pinTool.currentIndex === 1 ? "Generate a Visa PIN Verification Value."
+                      : (pinTool.currentIndex === 2 ? "Calculate or verify an IBM 3624 PIN offset."
+                      : (pinTool.currentIndex === 3
+                      ? "Translate ATM-engine ANSI/ISO-1 blocks between DES, 2-key 3DES, or destination-only TSN-DES."
+                      : (pinFormat.currentIndex === 3
+                      ? "ISO-4 creates and decodes an AES-encrypted 16-byte PIN block."
+                      : "Create or decode ISO PIN blocks; optionally transform them with 3DES-ECB.")))
                 font.pixelSize: 11
                 color: muted
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
+            }
+
+            ComboBox {
+                id: pinTool
+                model: ["PIN Blocks", "Visa PVV", "IBM 3624", "ATM Translate"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+            }
+
+            ComboBox {
+                id: pinFormat
+                model: ["ISO-0", "ISO-1", "ISO-3", "ISO-4"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 0
             }
 
             TextField {
@@ -2304,6 +2568,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
                 placeholderText: "PAN"
+                visible: pinTool.currentIndex !== 2
+                enabled: pinTool.currentIndex === 1 || pinTool.currentIndex === 3 || pinFormat.currentIndex !== 1
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2320,6 +2586,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
                 placeholderText: "Clear PIN"
+                visible: pinTool.currentIndex !== 3
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2335,7 +2602,8 @@ ApplicationWindow {
                 id: pinClearBlock
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
-                placeholderText: "Clear ISO-0 PIN block hex"
+                placeholderText: "Clear " + pinFormat.currentText + " PIN block hex"
+                visible: pinTool.currentIndex === 0 && pinFormat.currentIndex !== 3
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2351,7 +2619,12 @@ ApplicationWindow {
                 id: pinKey
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
-                placeholderText: "PIN key hex (16 or 24 bytes for 3DES)"
+                visible: pinTool.currentIndex !== 3
+                placeholderText: pinTool.currentIndex === 0 && pinFormat.currentIndex === 3
+                                 ? "AES key hex (16, 24, or 32 bytes)"
+                                 : (pinTool.currentIndex === 0
+                                    ? "PIN key hex (16 or 24 bytes for optional 3DES)"
+                                    : "PVK hex (8, 16, or 24 bytes)")
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2367,7 +2640,10 @@ ApplicationWindow {
                 id: pinEncryptedBlock
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
-                placeholderText: "Encrypted PIN block hex"
+                placeholderText: pinFormat.currentIndex === 3
+                                 ? "Encrypted ISO-4 PIN block hex"
+                                 : "3DES encrypted PIN block hex"
+                visible: pinTool.currentIndex === 0
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2382,6 +2658,7 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                visible: pinTool.currentIndex === 0
                 AppButton {
                     text: "Create"
                     Layout.fillWidth: true
@@ -2397,14 +2674,17 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                visible: pinTool.currentIndex === 0
                 AppButton {
                     text: "Encrypt"
                     Layout.fillWidth: true
+                    enabled: pinFormat.currentIndex !== 3
                     onClicked: encryptPinBlock()
                 }
                 AppButton {
                     text: "Decrypt"
                     Layout.fillWidth: true
+                    enabled: pinFormat.currentIndex !== 3
                     onClicked: decryptPinBlock()
                 }
             }
@@ -2412,6 +2692,7 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                visible: pinTool.currentIndex === 0
                 AppButton {
                     text: "Load F52"
                     Layout.fillWidth: true
@@ -2423,13 +2704,154 @@ ApplicationWindow {
                     onClicked: applyPinField52()
                 }
             }
+
+            TextField {
+                id: pinPvki
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 1
+                placeholderText: "PVKI (one digit)"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            TextField {
+                id: pinValidationData
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 2
+                placeholderText: "Validation data (16 digits)"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            TextField {
+                id: pinDecimalization
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 2
+                text: "0123456789012345"
+                placeholderText: "Decimalization table (16 digits)"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            TextField {
+                id: pinOffset
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 2
+                placeholderText: "PIN offset"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8
+                visible: pinTool.currentIndex === 1 || pinTool.currentIndex === 2
+                AppButton { text: pinTool.currentIndex === 1 ? "Calculate PVV" : "Calculate Offset"; Layout.fillWidth: true; onClicked: calculatePinVerification() }
+                AppButton { text: "Verify"; Layout.fillWidth: true; visible: pinTool.currentIndex === 2; onClicked: verifyIbmPin() }
+            }
+
+            TextField {
+                id: pinVerificationResult
+                Layout.fillWidth: true; Layout.preferredHeight: 32; readOnly: true
+                visible: pinTool.currentIndex === 1 || pinTool.currentIndex === 2
+                placeholderText: "Verification result"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            TextField {
+                id: pinTranslateSourceBlock
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 3
+                placeholderText: "Source encrypted PIN block hex"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8; visible: pinTool.currentIndex === 3
+                ComboBox {
+                    id: pinTranslateSourceFormat
+                    model: ["ANSI / ISO-0 (ATM)", "ISO-1 (ATM)"]
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
+                }
+                ComboBox {
+                    id: pinTranslateSourceAlgorithm
+                    model: ["DES", "2-key 3DES"]
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
+                }
+            }
+
+            TextField {
+                id: pinTranslateSourceKey
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 3
+                placeholderText: "Source key hex (8-byte DES or 16-byte 3DES)"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                echoMode: TextInput.Password
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8; visible: pinTool.currentIndex === 3
+                ComboBox {
+                    id: pinTranslateDestinationFormat
+                    model: ["ANSI / ISO-0 (ATM)", "ISO-1 (ATM)"]
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
+                }
+                ComboBox {
+                    id: pinTranslateDestinationAlgorithm
+                    model: ["DES", "2-key 3DES", "TSN-DES"]
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
+                }
+            }
+
+            TextField {
+                id: pinTranslateDestinationKey
+                Layout.fillWidth: true; Layout.preferredHeight: 32
+                visible: pinTool.currentIndex === 3
+                placeholderText: pinTranslateDestinationAlgorithm.currentIndex === 0
+                                 ? "Destination DES key hex (8 bytes)"
+                                 : "Destination key hex (16 bytes)"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                echoMode: TextInput.Password
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8; visible: pinTool.currentIndex === 3
+                AppButton {
+                    text: "Load F52"; Layout.fillWidth: true
+                    onClicked: {
+                        loadPinField52()
+                        pinTranslateSourceBlock.text = pinEncryptedBlock.text
+                    }
+                }
+                AppButton { text: "Translate"; Layout.fillWidth: true; onClicked: translateAtmPinBlock() }
+                AppButton {
+                    text: "Apply F52"; Layout.fillWidth: true
+                    enabled: pinTranslateOutput.text.length > 0
+                    onClicked: {
+                        pinEncryptedBlock.text = pinTranslateOutput.text
+                        applyPinField52()
+                    }
+                }
+            }
+
+            TextField {
+                id: pinTranslateOutput
+                Layout.fillWidth: true; Layout.preferredHeight: 32; readOnly: true
+                visible: pinTool.currentIndex === 3
+                placeholderText: "Translated encrypted PIN block hex"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
         }
     }
 
     Rectangle {
         id: rsaPanel
         width: 470
-        height: 520
+        height: 570
         radius: 18
         color: card
         border.color: border
@@ -2473,6 +2895,27 @@ ApplicationWindow {
                     text: "Verify"
                     Layout.preferredWidth: 72
                     onClicked: verifyRsaSha()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ComboBox {
+                    id: rsaPadding
+                    model: ["OAEP SHA-256", "OAEP SHA-1", "PKCS1 v1.5"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+                AppButton {
+                    text: "Encrypt"
+                    Layout.preferredWidth: 72
+                    onClicked: encryptRsa()
+                }
+                AppButton {
+                    text: "Decrypt"
+                    Layout.preferredWidth: 72
+                    onClicked: decryptRsa()
                 }
             }
 
@@ -2592,7 +3035,7 @@ ApplicationWindow {
                 spacing: 8
                 ComboBox {
                     id: tlvMode
-                    model: ["Parse", "Build"]
+                    model: ["Parse", "Build", "TLV to XML", "XML to TLV"]
                     Layout.fillWidth: true
                     Layout.preferredHeight: 30
                 }
@@ -2608,14 +3051,14 @@ ApplicationWindow {
                     value: 48
                     editable: true
                     Layout.preferredWidth: 90
-                    visible: tlvMode.currentIndex === 0
+                    visible: tlvMode.currentIndex === 0 || tlvMode.currentIndex === 2
                 }
                 ComboBox {
                     id: tlvInputMode
                     model: ["Hex In", "Text In"]
                     Layout.fillWidth: true
                     Layout.preferredHeight: 30
-                    visible: tlvMode.currentIndex === 0
+                    visible: tlvMode.currentIndex === 0 || tlvMode.currentIndex === 2
                 }
                 TextField {
                     id: tlvTagInput
@@ -2642,16 +3085,19 @@ ApplicationWindow {
                 }
                 AppButton {
                     text: "Load Field"
-                    visible: tlvMode.currentIndex === 0
+                    visible: tlvMode.currentIndex === 0 || tlvMode.currentIndex === 2
                     onClicked: loadTlvField()
                 }
                 AppButton {
-                    text: tlvMode.currentIndex === 0 ? "Parse" : "Build"
+                    text: tlvMode.currentIndex === 0 ? "Parse"
+                          : (tlvMode.currentIndex === 1 ? "Build" : "Convert")
                     onClicked: {
                         if (tlvMode.currentIndex === 0) {
                             parseTlvInput()
-                        } else {
+                        } else if (tlvMode.currentIndex === 1) {
                             buildTlvInput()
+                        } else {
+                            convertTlvXml()
                         }
                     }
                 }
@@ -2669,10 +3115,11 @@ ApplicationWindow {
                 id: tlvInput
                 Layout.fillWidth: true
                 Layout.preferredHeight: 96
-                placeholderText: tlvMode.currentIndex === 0
-                                 ? "TLV input"
+                placeholderText: tlvMode.currentIndex === 0 ? "TLV input"
+                                 : (tlvMode.currentIndex === 2 ? "TLV input to convert to editable XML"
+                                 : (tlvMode.currentIndex === 3 ? "Editable TLV XML"
                                  : (tlvConstructed.checked ? "Child TLV hex payload" :
-                                    (tlvValueMode.currentIndex === 0 ? "Value hex" : "Value text"))
+                                    (tlvValueMode.currentIndex === 0 ? "Value hex" : "Value text"))))
                 color: ink
                 font.pixelSize: 13
                 placeholderTextColor: muted
@@ -2769,7 +3216,7 @@ ApplicationWindow {
     Rectangle {
         id: iranSystemPanel
         width: 460
-        height: 470
+        height: 500
         radius: 18
         color: card
         border.color: border
@@ -2810,6 +3257,13 @@ ApplicationWindow {
                     text: "Load Field"
                     onClicked: loadIranSystemField()
                 }
+                ComboBox {
+                    id: iranSystemProfile
+                    model: ["Normalized", "ATM Engine"]
+                    currentIndex: 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
             }
 
             RowLayout {
@@ -2835,7 +3289,7 @@ ApplicationWindow {
                 }
                 ComboBox {
                     id: iranSystemTextEncoding
-                    model: ["UTF-8", "ANSI"]
+                    model: ["UTF-8", "ANSI", "Hex"]
                     currentIndex: 0
                     Layout.fillWidth: true
                 }
@@ -2860,7 +3314,9 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
                 placeholderText: iranSystemDirection.currentText === "Decode IranSys"
-                                 ? "IranSystem input"
+                                 ? (iranSystemProfile.currentIndex === 1
+                                    ? "ATM-engine IranSystem bytes (select ANSI or Hex)"
+                                    : "IranSystem input")
                                  : "Text input"
                 color: ink
                 font.pixelSize: 13
@@ -2915,6 +3371,213 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: bankingToolsPanel
+        width: 430
+        height: 470
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: Math.min(bankingToolsButton.x, parent.width - width - 24)
+        y: bankingToolsOpen ? (bankingToolsButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y {
+            NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: "Banking Tools"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: ink
+            }
+
+            ComboBox {
+                id: bankingOperation
+                model: ["BCD Encode Left", "BCD Encode Right", "BCD Decode Left", "BCD Decode Right",
+                        "XOR Hex", "Base64 Encode Text", "Base64 Encode Hex", "Base64 Decode Text",
+                        "Base64 Decode Hex", "MD5", "SHA-1", "SHA-256", "SHA-512", "Luhn Check",
+                        "Luhn Generate", "Adjust Odd Parity", "Check Odd Parity", "Random Key", "KCV",
+                        "ASCII to EBCDIC", "EBCDIC to ASCII"]
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ComboBox {
+                    id: bankingInputMode
+                    model: ["Text input", "Hex input"]
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                }
+                SpinBox {
+                    id: bankingParameter
+                    from: 0
+                    to: 64
+                    value: 3
+                    editable: true
+                    Layout.preferredWidth: 110
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Digit count, generated key bytes, or KCV output bytes"
+                }
+            }
+
+            TextArea {
+                id: bankingInput
+                Layout.fillWidth: true
+                Layout.preferredHeight: 92
+                placeholderText: "Input"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.WrapAnywhere
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            TextField {
+                id: bankingSecondary
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+                placeholderText: "Second hex value (XOR)"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+
+            AppButton {
+                text: "Run"
+                Layout.fillWidth: true
+                onClicked: runBankingUtility()
+            }
+
+            TextArea {
+                id: bankingOutput
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                readOnly: true
+                placeholderText: "Output"
+                color: ink
+                font.pixelSize: 13
+                placeholderTextColor: muted
+                wrapMode: TextArea.WrapAnywhere
+                selectByMouse: true
+                background: Rectangle {
+                    radius: 8
+                    color: "#121922"
+                    border.color: border
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: networkPanel
+        width: 480
+        height: 500
+        radius: 18
+        color: card
+        border.color: border
+        border.width: 1
+        x: Math.min(networkButton.x, parent.width - width - 24)
+        y: networkOpen ? (networkButton.y - height - 10) : (parent.height + 24)
+        z: 10
+        opacity: 0.15 + 0.85 * intro
+
+        Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label { text: "ISO TCP Tester"; font.pixelSize: 13; font.weight: Font.DemiBold; color: ink }
+
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: networkHost
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 32
+                    placeholderText: "Host or IP address"
+                    color: ink; font.pixelSize: 13; placeholderTextColor: muted; selectByMouse: true
+                    background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+                }
+                SpinBox { id: networkPort; from: 1; to: 65535; value: 5000; editable: true; Layout.preferredWidth: 110 }
+                SpinBox { id: networkTimeout; from: 100; to: 120000; value: 5000; stepSize: 100; editable: true; Layout.preferredWidth: 110 }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox { id: networkInputMode; model: ["Hex", "Text"]; Layout.fillWidth: true; Layout.preferredHeight: 30 }
+                ComboBox { id: networkFraming; model: ["None", "ASCII", "Binary"]; Layout.fillWidth: true; Layout.preferredHeight: 30 }
+                SpinBox {
+                    id: networkHeaderSize
+                    from: 1; to: networkFraming.currentIndex === 2 ? 4 : 8
+                    value: networkFraming.currentIndex === 2 ? 2 : 4
+                    editable: true; Layout.preferredWidth: 86
+                    enabled: networkFraming.currentIndex !== 0
+                }
+                ComboBox { id: networkOutputMode; model: ["Hex Out", "Text Out"]; Layout.fillWidth: true; Layout.preferredHeight: 30 }
+            }
+
+            TextArea {
+                id: networkPayload
+                Layout.fillWidth: true; Layout.preferredHeight: 100
+                placeholderText: "ISO 8583 request body"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted
+                wrapMode: TextArea.WrapAnywhere; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                AppButton {
+                    text: "Load Buffer"; Layout.fillWidth: true
+                    onClicked: {
+                        networkPayload.text = decodeInput.text
+                        networkInputMode.currentIndex = bufferEncoding.currentIndex
+                    }
+                }
+                AppButton { text: "Send"; Layout.fillWidth: true; onClicked: sendNetworkRequest() }
+            }
+
+            TextArea {
+                id: networkResponse
+                Layout.fillWidth: true; Layout.fillHeight: true; readOnly: true
+                placeholderText: "Response body"
+                color: ink; font.pixelSize: 13; placeholderTextColor: muted
+                wrapMode: TextArea.WrapAnywhere; selectByMouse: true
+                background: Rectangle { radius: 8; color: "#121922"; border.color: border }
+            }
+            Label {
+                id: networkMeta
+                Layout.fillWidth: true; color: muted; font.pixelSize: 11
+                wrapMode: Text.WrapAnywhere
+            }
+        }
+    }
+
+    Rectangle {
         id: infoPanel
         width: 360
         height: 220
@@ -2922,7 +3585,7 @@ ApplicationWindow {
         color: card
         border.color: border
         border.width: 1
-        x: infoButton.x
+        x: Math.min(infoButton.x, parent.width - width - 24)
         y: infoOpen ? (infoButton.y - height - 10) : (parent.height + 24)
         z: 10
         opacity: 0.15 + 0.85 * intro
@@ -3175,9 +3838,47 @@ ApplicationWindow {
     }
 
     AppButton {
+        id: bankingToolsButton
+        text: bankingToolsOpen ? "Tools v" : "Tools >"
+        anchors.left: iranSystemButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("bankingTools")
+            bankingToolsOpen = !bankingToolsOpen
+            if (bankingToolsOpen) {
+                closeToolPanels("bankingTools")
+            }
+        }
+    }
+
+    AppButton {
+        id: networkButton
+        text: networkOpen ? "Network v" : "Network >"
+        anchors.left: bankingToolsButton.right
+        anchors.bottom: statusBar.bottom
+        anchors.leftMargin: 8
+        anchors.bottomMargin: 4
+        height: 24
+        padding: 6
+        font.pixelSize: 11
+        z: 11
+        onClicked: {
+            closeToolPanels("network")
+            networkOpen = !networkOpen
+            if (networkOpen) closeToolPanels("network")
+        }
+    }
+
+    AppButton {
         id: infoButton
         text: infoOpen ? "Info v" : "Info >"
-        anchors.left: iranSystemButton.right
+        anchors.left: networkButton.right
         anchors.bottom: statusBar.bottom
         anchors.leftMargin: 8
         anchors.bottomMargin: 4

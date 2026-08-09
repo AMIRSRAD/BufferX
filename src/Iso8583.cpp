@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 
 namespace {
 std::string formatContextBytes(const std::vector<unsigned char>& data, size_t offset, size_t count = 8) {
@@ -323,14 +324,217 @@ bool validateNumericText(const std::string& text) {
     return true;
 }
 
+bool hasSourceType(const FieldDef& def, const char* prefix) {
+    return def.sourceType.rfind(prefix, 0) == 0;
+}
+
+bool isLegacyIfb(const FieldDef& def, bool legacyEngine) {
+    return legacyEngine && hasSourceType(def, "IFB_");
+}
+
+bool isLegacyIfbNumeric(const FieldDef& def, bool legacyEngine) {
+    return isLegacyIfb(def, legacyEngine) &&
+           (def.sourceType.find("NUMERIC") != std::string::npos ||
+            def.sourceType.find("LLNUM") != std::string::npos);
+}
+
+bool isLegacyIfbBinary(const FieldDef& def, bool legacyEngine) {
+    return isLegacyIfb(def, legacyEngine) && def.sourceType.find("BINARY") != std::string::npos;
+}
+
+bool packBcd(const std::string& digits,
+             bool padLeft,
+             unsigned char rightPadNibble,
+             std::vector<unsigned char>& out,
+             std::string& error) {
+    if (!validateNumericText(digits)) {
+        error = "BCD value contains non-numeric characters.";
+        return false;
+    }
+    out.clear();
+    out.reserve((digits.size() + 1) / 2);
+    size_t index = 0;
+    if ((digits.size() % 2) != 0 && padLeft) {
+        out.push_back(static_cast<unsigned char>(digits[0] - '0'));
+        index = 1;
+    }
+    while (index + 1 < digits.size()) {
+        out.push_back(static_cast<unsigned char>(((digits[index] - '0') << 4) | (digits[index + 1] - '0')));
+        index += 2;
+    }
+    if (index < digits.size()) {
+        out.push_back(static_cast<unsigned char>(((digits[index] - '0') << 4) | rightPadNibble));
+    }
+    return true;
+}
+
+bool unpackBcd(const std::vector<unsigned char>& bytes,
+               size_t digitCount,
+               bool padLeft,
+               std::string& value,
+               std::string& error) {
+    std::string all;
+    all.reserve(bytes.size() * 2);
+    for (unsigned char byte : bytes) {
+        const unsigned char high = static_cast<unsigned char>((byte >> 4) & 0x0F);
+        const unsigned char low = static_cast<unsigned char>(byte & 0x0F);
+        if (high > 9 || (low > 9 && all.size() + 1 < digitCount)) {
+            error = "Invalid packed BCD digit.";
+            return false;
+        }
+        all.push_back(static_cast<char>('0' + high));
+        if (low <= 9) {
+            all.push_back(static_cast<char>('0' + low));
+        } else {
+            all.push_back('F');
+        }
+    }
+    if ((digitCount % 2) != 0 && padLeft) {
+        if (all.empty()) {
+            error = "Packed BCD value is empty.";
+            return false;
+        }
+        all.erase(all.begin());
+    }
+    if (all.size() < digitCount) {
+        error = "Packed BCD value is shorter than declared length.";
+        return false;
+    }
+    value = all.substr(0, digitCount);
+    return true;
+}
+
+bool parsePackedDecimalLength(const std::vector<unsigned char>& data,
+                              size_t offset,
+                              int digits,
+                              size_t& value,
+                              size_t& consumed,
+                              std::string& error) {
+    consumed = static_cast<size_t>((digits + 1) / 2);
+    if (digits <= 0 || offset + consumed > data.size()) {
+        error = "Packed length prefix exceeds buffer.";
+        return false;
+    }
+    std::vector<unsigned char> bytes(data.begin() + static_cast<long long>(offset),
+                                     data.begin() + static_cast<long long>(offset + consumed));
+    std::string text;
+    if (!unpackBcd(bytes, static_cast<size_t>(digits), true, text, error)) {
+        return false;
+    }
+    value = 0;
+    for (char ch : text) {
+        value = value * 10 + static_cast<size_t>(ch - '0');
+    }
+    return true;
+}
+
+bool appendPackedDecimalLength(std::vector<unsigned char>& out,
+                               size_t length,
+                               int digits,
+                               std::string& error) {
+    size_t limit = 1;
+    for (int i = 0; i < digits; ++i) {
+        limit *= 10;
+    }
+    if (digits <= 0 || length >= limit) {
+        error = "Value exceeds packed length-prefix capacity.";
+        return false;
+    }
+    std::string text = std::to_string(length);
+    text.insert(text.begin(), static_cast<size_t>(digits) - text.size(), '0');
+    std::vector<unsigned char> packed;
+    if (!packBcd(text, true, 0, packed, error)) {
+        return false;
+    }
+    out.insert(out.end(), packed.begin(), packed.end());
+    return true;
+}
+
 bool decodeFieldValue(const std::vector<unsigned char>& buffer,
                       size_t& offset,
                       int fieldId,
                       const FieldDef& def,
+                      bool legacyEngine,
                       std::string& value,
                       std::string& error) {
     const size_t fieldOffset = offset;
     std::vector<unsigned char> fieldBytes;
+
+    if (legacyEngine && def.sourceType == "IFA_HHHHCHAR") {
+        if (offset + 4 > buffer.size()) {
+            error = formatDecodeError("Field " + std::to_string(fieldId), buffer, offset,
+                                      "Hexadecimal length prefix exceeds buffer.");
+            return false;
+        }
+        std::string lengthText(buffer.begin() + static_cast<long long>(offset),
+                               buffer.begin() + static_cast<long long>(offset + 4));
+        size_t length = 0;
+        try {
+            length = static_cast<size_t>(std::stoul(lengthText, nullptr, 16));
+        } catch (...) {
+            error = formatDecodeError("Field " + std::to_string(fieldId), buffer, offset,
+                                      "Invalid hexadecimal length prefix.");
+            return false;
+        }
+        offset += 4;
+        if (length > static_cast<size_t>(def.length) || offset + length > buffer.size()) {
+            error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset,
+                                      "Declared hexadecimal length exceeds field or buffer.");
+            return false;
+        }
+        value.assign(buffer.begin() + static_cast<long long>(offset),
+                     buffer.begin() + static_cast<long long>(offset + length));
+        offset += length;
+        return true;
+    }
+
+    if (isLegacyIfb(def, legacyEngine)) {
+        size_t logicalLength = static_cast<size_t>(def.length);
+        if (def.variable) {
+            size_t prefixBytes = 0;
+            if (!parsePackedDecimalLength(buffer, offset, def.lengthDigits, logicalLength, prefixBytes, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+            offset += prefixBytes;
+            if (def.length > 0 && logicalLength > static_cast<size_t>(def.length)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset,
+                                          "Declared length exceeds maximum.");
+                return false;
+            }
+        }
+        if (isLegacyIfbNumeric(def, legacyEngine)) {
+            const size_t byteLength = (logicalLength + 1) / 2;
+            if (offset + byteLength > buffer.size()) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, offset,
+                                          "Packed BCD field exceeds buffer.");
+                return false;
+            }
+            fieldBytes.assign(buffer.begin() + static_cast<long long>(offset),
+                              buffer.begin() + static_cast<long long>(offset + byteLength));
+            offset += byteLength;
+            const bool panRightPad = def.sourceType == "IFB_LLNUM_PAN_HC";
+            if (!unpackBcd(fieldBytes, logicalLength, !panRightPad, value, error)) {
+                error = formatDecodeError("Field " + std::to_string(fieldId), buffer, fieldOffset, error);
+                return false;
+            }
+            return true;
+        }
+        if (offset + logicalLength > buffer.size()) {
+            error = formatDecodeError("Field " + std::to_string(fieldId), buffer, offset,
+                                      "Legacy binary field exceeds buffer.");
+            return false;
+        }
+        fieldBytes.assign(buffer.begin() + static_cast<long long>(offset),
+                          buffer.begin() + static_cast<long long>(offset + logicalLength));
+        offset += logicalLength;
+        if (isLegacyIfbBinary(def, legacyEngine)) {
+            value = toHex(fieldBytes, true);
+        } else {
+            value.assign(fieldBytes.begin(), fieldBytes.end());
+        }
+        return true;
+    }
     if (def.variable) {
         if (isBinaryType(def.type)) {
             size_t len = 0;
@@ -389,6 +593,82 @@ bool encodeFieldValue(std::vector<unsigned char>& message,
                       std::string& error) {
     std::vector<unsigned char> fieldBytes;
     std::vector<unsigned char> wireBytes;
+
+    if (options.legacyEngine && def.sourceType == "IFA_HHHHCHAR") {
+        if (inputValue.size() > static_cast<size_t>(def.length) || inputValue.size() > 0xFFFF) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds HHHH length.");
+            return false;
+        }
+        char lengthText[5] = {};
+        std::snprintf(lengthText, sizeof(lengthText), "%04X", static_cast<unsigned int>(inputValue.size()));
+        message.insert(message.end(), lengthText, lengthText + 4);
+        message.insert(message.end(), inputValue.begin(), inputValue.end());
+        return true;
+    }
+
+    if (isLegacyIfb(def, options.legacyEngine)) {
+        std::string textValue = inputValue;
+        if (isLegacyIfbNumeric(def, options.legacyEngine)) {
+            if (options.allowNumericSanitize) {
+                textValue = sanitizeNumericText(textValue);
+            }
+            if (!validateNumericText(textValue)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + " expects numeric value.");
+                return false;
+            }
+        }
+        if (isLegacyIfbBinary(def, options.legacyEngine)) {
+            HexParseResult hex = fromHex(inputValue);
+            if (!hex.ok) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + hex.error);
+                return false;
+            }
+            if ((!def.variable && hex.bytes.size() != static_cast<size_t>(def.length)) ||
+                (def.variable && hex.bytes.size() > static_cast<size_t>(def.length))) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + " binary length mismatch.");
+                return false;
+            }
+            if (def.variable && !appendPackedDecimalLength(message, hex.bytes.size(), def.lengthDigits, error)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + error);
+                return false;
+            }
+            message.insert(message.end(), hex.bytes.begin(), hex.bytes.end());
+            return true;
+        }
+        if (def.variable && textValue.size() > static_cast<size_t>(def.length)) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds maximum length.");
+            return false;
+        }
+        if (def.variable && !appendPackedDecimalLength(message, textValue.size(), def.lengthDigits, error)) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + error);
+            return false;
+        }
+        if (isLegacyIfbNumeric(def, options.legacyEngine)) {
+            if (!def.variable) {
+                if (textValue.size() > static_cast<size_t>(def.length)) {
+                    error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds fixed length.");
+                    return false;
+                }
+                textValue.insert(textValue.begin(), static_cast<size_t>(def.length) - textValue.size(), '0');
+            }
+            const bool panRightPad = def.sourceType == "IFB_LLNUM_PAN_HC";
+            if (!packBcd(textValue, !panRightPad, panRightPad ? 0x0F : 0x00, wireBytes, error)) {
+                error = formatEncodeInputError("Field " + std::to_string(fieldId) + ": " + error);
+                return false;
+            }
+            message.insert(message.end(), wireBytes.begin(), wireBytes.end());
+            return true;
+        }
+        if (!def.variable && textValue.size() > static_cast<size_t>(def.length)) {
+            error = formatEncodeInputError("Field " + std::to_string(fieldId) + " exceeds fixed length.");
+            return false;
+        }
+        if (!def.variable && def.type == FieldType::CharFixed) {
+            textValue.append(static_cast<size_t>(def.length) - textValue.size(), ' ');
+        }
+        message.insert(message.end(), textValue.begin(), textValue.end());
+        return true;
+    }
 
     if (isBinaryType(def.type)) {
         HexParseResult hex = fromHex(inputValue);
@@ -568,7 +848,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
             }
             const FieldDef& def = packager.fields.at(fieldId);
             std::string value;
-            if (!decodeFieldValue(buffer, offset, fieldId, def, value, error)) {
+            if (!decodeFieldValue(buffer, offset, fieldId, def, options.legacyEngine, value, error)) {
                 result.ok = false;
                 result.error = error;
                 return result;
@@ -591,7 +871,17 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         const int bitCount = packager.fieldCount > 0 ? packager.fieldCount : 64;
         const int bitmapHexChars = ((bitCount + 7) / 8) * 2;
         std::vector<unsigned char> bitmapBytes;
-        if (!readHexChars(buffer, offset, bitmapHexChars, bitmapBytes, error)) {
+        const auto bitmapDefIt = packager.fields.find(0);
+        const bool binaryBitmap = options.legacyEngine && bitmapDefIt != packager.fields.end() &&
+                                  bitmapDefIt->second.sourceType == "IFB_BITMAP";
+        if (binaryBitmap) {
+            const int bitmapBytesCount = bitmapHexChars / 2;
+            if (!readFixedField(buffer, offset, bitmapBytesCount, bitmapBytes, error)) {
+                result.ok = false;
+                result.error = formatDecodeError("Bitmap", buffer, offset, error);
+                return result;
+            }
+        } else if (!readHexChars(buffer, offset, bitmapHexChars, bitmapBytes, error)) {
             result.ok = false;
             result.error = formatDecodeError("Bitmap", buffer, offset, error);
             return result;
@@ -612,7 +902,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
             }
 
             std::string value;
-            if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, value, error)) {
+            if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, options.legacyEngine, value, error)) {
                 result.ok = false;
                 result.error = error;
                 return result;
@@ -623,23 +913,27 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         return result;
     }
 
-    int mtiLength = 4;
     auto mtiIt = packager.fields.find(0);
-    if (mtiIt != packager.fields.end() && mtiIt->second.length > 0) {
-        mtiLength = mtiIt->second.length;
-    }
-
-    std::vector<unsigned char> mtiBytes;
-    if (!readFixedField(buffer, offset, mtiLength, mtiBytes, error)) {
+    if (mtiIt == packager.fields.end()) {
         result.ok = false;
-        result.error = formatDecodeError("MTI", buffer, offset, error);
+        result.error = formatPackagerError("Missing field 0 (MTI) definition.");
         return result;
     }
-    result.fields[0] = std::string(mtiBytes.begin(), mtiBytes.end());
+    std::string mtiValue;
+    if (!decodeFieldValue(buffer, offset, 0, mtiIt->second, options.legacyEngine, mtiValue, error)) {
+        result.ok = false;
+        result.error = error;
+        return result;
+    }
+    result.fields[0] = mtiValue;
 
     std::vector<unsigned char> bitmapBytes;
     bool hasSecondary = false;
-    if (!readHexChars(buffer, offset, 16, bitmapBytes, error)) {
+    const auto bitmapDefIt = packager.fields.find(packager.bitmapIndex);
+    const bool binaryBitmap = options.legacyEngine && bitmapDefIt != packager.fields.end() &&
+                              bitmapDefIt->second.sourceType == "IFB_BITMAP";
+    if ((binaryBitmap && !readFixedField(buffer, offset, 8, bitmapBytes, error)) ||
+        (!binaryBitmap && !readHexChars(buffer, offset, 16, bitmapBytes, error))) {
         result.ok = false;
         result.error = formatDecodeError("Bitmap", buffer, offset, error);
         return result;
@@ -647,7 +941,8 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
     hasSecondary = (bitmapBytes[0] & 0x80) != 0;
     if (hasSecondary) {
         std::vector<unsigned char> secondaryBytes;
-        if (!readHexChars(buffer, offset, 16, secondaryBytes, error)) {
+        if ((binaryBitmap && !readFixedField(buffer, offset, 8, secondaryBytes, error)) ||
+            (!binaryBitmap && !readHexChars(buffer, offset, 16, secondaryBytes, error))) {
             result.ok = false;
             result.error = formatDecodeError("Secondary bitmap", buffer, offset, error);
             return result;
@@ -669,7 +964,7 @@ DecodeResult Iso8583Codec::decode(const std::vector<unsigned char>& data,
         }
 
         std::string value;
-        if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, value, error)) {
+        if (!decodeFieldValue(buffer, offset, fieldId, defIt->second, options.legacyEngine, value, error)) {
             result.ok = false;
             result.error = error;
             return result;
@@ -740,8 +1035,15 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
     if (packager.bitmapIndex == 0) {
         bool hasSecondary = false;
         const std::vector<unsigned char> bitmap = buildBitmapForPackager(fields, packager, hasSecondary);
-        const std::string bitmapHex = toHex(bitmap, true);
-        message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
+        const auto bitmapDefIt = packager.fields.find(0);
+        const bool binaryBitmap = options.legacyEngine && bitmapDefIt != packager.fields.end() &&
+                                  bitmapDefIt->second.sourceType == "IFB_BITMAP";
+        if (binaryBitmap) {
+            message.insert(message.end(), bitmap.begin(), bitmap.end());
+        } else {
+            const std::string bitmapHex = toHex(bitmap, true);
+            message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
+        }
 
         const int maxField = packager.fieldCount > 0 ? packager.fieldCount : 64;
         for (int fieldId = 1; fieldId <= maxField; ++fieldId) {
@@ -793,29 +1095,29 @@ EncodeResult Iso8583Codec::encode(const std::map<int, std::string>& fields,
         return result;
     }
 
-    int mtiLength = 4;
     auto mtiDefIt = packager.fields.find(0);
-    if (mtiDefIt != packager.fields.end() && mtiDefIt->second.length > 0) {
-        mtiLength = mtiDefIt->second.length;
+    if (mtiDefIt == packager.fields.end()) {
+        result.ok = false;
+        result.error = formatPackagerError("Missing field 0 (MTI) definition.");
+        return result;
     }
-
-    std::vector<unsigned char> mtiBytes = toAsciiBytes(mtiIt->second);
-    if (static_cast<int>(mtiBytes.size()) != mtiLength) {
-        if (static_cast<int>(mtiBytes.size()) > mtiLength) {
-            result.ok = false;
-            result.error = formatEncodeInputError("MTI length exceeds field definition (got " +
-                                                  std::to_string(mtiBytes.size()) + " bytes, expected " +
-                                                  std::to_string(mtiLength) + ").");
-            return result;
-        }
-        mtiBytes.insert(mtiBytes.begin(), mtiLength - mtiBytes.size(), '0');
+    if (!encodeFieldValue(message, 0, mtiDefIt->second, mtiIt->second, options, error)) {
+        result.ok = false;
+        result.error = error;
+        return result;
     }
-    message.insert(message.end(), mtiBytes.begin(), mtiBytes.end());
 
     bool hasSecondary = false;
     std::vector<unsigned char> bitmap = buildBitmapForPackager(fields, packager, hasSecondary);
-    std::string bitmapHex = toHex(bitmap, true);
-    message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
+    const auto bitmapDefIt = packager.fields.find(packager.bitmapIndex);
+    const bool binaryBitmap = options.legacyEngine && bitmapDefIt != packager.fields.end() &&
+                              bitmapDefIt->second.sourceType == "IFB_BITMAP";
+    if (binaryBitmap) {
+        message.insert(message.end(), bitmap.begin(), bitmap.end());
+    } else {
+        std::string bitmapHex = toHex(bitmap, true);
+        message.insert(message.end(), bitmapHex.begin(), bitmapHex.end());
+    }
 
     const int maxField = packager.fieldCount > 0 ? packager.fieldCount : 128;
     for (int fieldId = 2; fieldId <= maxField; ++fieldId) {

@@ -1,0 +1,94 @@
+/* ─────────────────────────────────────────────────────────────
+   src/styles/fonts.css — self-hosted typefaces
+
+   Bundled rather than fetched from a CDN for three reasons:
+   Tauri's CSP blocks external origins outright, the desktop app
+   must work offline, and a fallback that silently swaps the
+   typeface changes glyph widths — which matters when columns of
+   hex are supposed to line up.
+
+   Before this file existed the design named Inter and JetBrains
+   Mono but shipped neither, so the app quietly rendered in
+   whatever the OS happened to have.
+
+   The faces are declared by hand instead of importing each
+   package's `index.css`, because those pull in Cyrillic, Greek
+   and Vietnamese subsets as well. The browser would never
+   download them — unicode-range sees to that — but the bundler
+   still copies every file into `dist/`, which cost 7.2 MB of
+   build output for glyphs this app cannot produce. Only Latin,
+   Latin Extended, and (for Persian) Arabic are declared here.
+
+   One variable file per family covers the whole weight axis, so
+   all four weights in the type scale are free.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── UI: Inter ───────────────────────────────────────────────
+   Tall x-height and open apertures; designed for interface text
+   at small sizes, which is all this app has. */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ── Mono: JetBrains Mono ────────────────────────────────────
+   Chosen over IBM Plex Mono for a taller x-height and more
+   clearly separated 0/O and 1/l/I — the entire job in a tool
+   full of PANs, keys, and hex.
+
+   Its programming ligatures are switched off in app.css: `!=`
+   fusing into a single glyph is helpful in source code and
+   actively wrong in a hex dump, where one glyph must mean one
+   character. */
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ── Persian/Arabic: Vazirmatn ───────────────────────────────
+   Inter has no Arabic coverage, so without this the IranSystem
+   panel falls back to whatever the system offers — and its
+   output is the one thing in the app that must be read exactly.
+   Declared last so it is only consulted for codepoints the
+   Latin faces above do not claim. */
+@font-face {
+  font-family: 'Vazirmatn Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/vazirmatn/files/vazirmatn-arabic-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+    U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FEFF;
+}

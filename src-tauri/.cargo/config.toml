@@ -1,0 +1,11 @@
+# Send Rust build output to the repo's single build folder.
+#
+# Everything this project generates lands under `build/` — CMake in
+# `build/cmake`, the web bundle in `build/web`, Rust here. One folder to ignore,
+# one folder to delete when something needs a clean start, and no build output
+# interleaved with source.
+#
+# The path is relative to this file's directory (src-tauri/), which is how Cargo
+# resolves `target-dir` from a config file.
+[build]
+target-dir = "../build/rust"

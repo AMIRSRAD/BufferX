@@ -1,0 +1,382 @@
+/* ─────────────────────────────────────────────────────────────
+   src/styles/app.css — BufferX design tokens (Tailwind CSS v4)
+   ───────────────────────────────────────────────────────────── */
+@import "tailwindcss";
+
+/* Typefaces first, so @font-face is registered before anything paints. */
+@import "./fonts.css";
+
+/* Manual, attribute-driven theming. `data-theme` is always present on <html>. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/* ── Raw palette: DARK (default) ─────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces — cool charcoal, hue 255, chroma held ≤ 0.012.
+     Lifted off near-black: the canvas used to be rgb(12,16,21), which put
+     primary text at 17:1 and read as glare rather than clarity. Raising the
+     whole ladder keeps every step distinct while taking the harshness out. */
+  --bx-surface-0:      oklch(0.196 0.010 255); /* app canvas            */
+  --bx-surface-1:      oklch(0.232 0.011 255); /* panel / card          */
+  --bx-surface-2:      oklch(0.268 0.011 255); /* control fill, th, bar */
+  --bx-surface-3:      oklch(0.298 0.012 255); /* popover, dialog, menu */
+  --bx-surface-inset:  oklch(0.172 0.010 255); /* hex viewer, code well */
+  --bx-surface-raised: oklch(0.252 0.011 255); /* hover row, chip       */
+  --bx-scrim:          oklch(0.12  0.008 255 / 0.62);
+
+  /* Text — primary eased from 0.960 so long sessions are comfortable. Still
+     ~13:1 on the canvas, far above the 4.5:1 AA floor. */
+  --bx-text-primary:   oklch(0.928 0.004 255);
+  --bx-text-secondary: oklch(0.782 0.008 255);
+  --bx-text-tertiary:  oklch(0.706 0.010 255);
+  --bx-text-disabled:  oklch(0.558 0.010 255);
+  --bx-text-inverse:   oklch(0.196 0.012 255);
+
+  /* Borders — lifted with the surfaces so separation is not lost */
+  --bx-border-subtle:  oklch(0.306 0.010 255); /* row hairline          */
+  --bx-border-default: oklch(0.392 0.012 255); /* panel edge, divider   */
+  --bx-border-strong:  oklch(0.576 0.014 255); /* input / control edge  */
+
+  /* Accent — cyan-teal, hue band 185–205 reserved. Chroma nearly halved
+     (0.130 → 0.072): the accent marks the focused thing, it should not
+     compete with the data for attention. */
+  --bx-accent:         oklch(0.800 0.072 195);
+  --bx-accent-hover:   oklch(0.856 0.066 195);
+  --bx-accent-active:  oklch(0.746 0.074 195);
+  --bx-accent-muted:   oklch(0.322 0.034 195); /* selection / soft fill */
+  --bx-accent-fg:      oklch(0.196 0.014 210); /* ink on accent fill    */
+
+  /* Status — chroma reduced ~40%. These stay legible and unambiguous, but a
+     screen with several warnings no longer looks like a fairground. */
+  --bx-ok:             oklch(0.802 0.092 152);
+  --bx-ok-bg:          oklch(0.286 0.032 152);
+  --bx-ok-border:      oklch(0.458 0.056 152);
+  --bx-warn:           oklch(0.826 0.088 78);
+  --bx-warn-bg:        oklch(0.292 0.032 78);
+  --bx-warn-border:    oklch(0.484 0.060 78);
+  --bx-error:          oklch(0.738 0.110 25);
+  --bx-error-bg:       oklch(0.288 0.040 25);
+  --bx-error-border:   oklch(0.488 0.074 25);
+  --bx-info:           oklch(0.786 0.074 250);
+  --bx-info-bg:        oklch(0.286 0.032 250);
+  --bx-info-border:    oklch(0.470 0.056 250);
+
+  /* Field / byte highlight — ink.
+     Chroma comes down but the hue spread is untouched: telling eight field
+     runs apart is this palette's entire job. The two darkest entries (4 and 8,
+     previously 5.6:1 and 6.3:1) are lightened, so the whole set now sits in a
+     narrow band and no field looks more important than another. */
+  /* Lightness deliberately varies. With chroma this low, hue alone does not
+     separate neighbouring pairs — flat lightness put green(150) and olive(118)
+     within 0.053 OKLab of each other, and blue(265) and violet(305) within
+     0.066. Staggering lightness restores the separation without putting the
+     saturation back, and also keeps the set legible under red-green CVD, where
+     hue carries much less information than lightness. */
+  --bx-hl-1:  oklch(0.868 0.062 215);
+  --bx-hl-2:  oklch(0.796 0.104 30);
+  --bx-hl-3:  oklch(0.836 0.096 150);
+  --bx-hl-4:  oklch(0.742 0.112 350);
+  --bx-hl-5:  oklch(0.878 0.090 78);
+  --bx-hl-6:  oklch(0.764 0.096 265);
+  --bx-hl-7:  oklch(0.846 0.086 305);
+  --bx-hl-8:  oklch(0.712 0.088 118);
+  /* Field / byte highlight — run background tint */
+  --bx-hl-1-bg: oklch(0.298 0.030 215);
+  --bx-hl-2-bg: oklch(0.294 0.036 30);
+  --bx-hl-3-bg: oklch(0.294 0.034 150);
+  --bx-hl-4-bg: oklch(0.298 0.038 350);
+  --bx-hl-5-bg: oklch(0.294 0.032 78);
+  --bx-hl-6-bg: oklch(0.302 0.036 265);
+  --bx-hl-7-bg: oklch(0.302 0.034 305);
+  --bx-hl-8-bg: oklch(0.290 0.030 118);
+
+  /* Shadow ingredients — softened to match the lifted surfaces */
+  --bx-shadow-color: oklch(0 0 0 / 0.46);
+  --bx-shadow-key:   oklch(0 0 0 / 0.32);
+  --bx-rim:          oklch(1 0 0 / 0.045); /* 1px top highlight on raised */
+}
+
+/* ── Raw palette: LIGHT (full parity) ────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Warmed a shade off pure white, for the same reason the dark canvas was
+     lifted off pure black: paper, not a lightbulb. */
+  --bx-surface-0:      oklch(0.972 0.003 255);
+  --bx-surface-1:      oklch(0.998 0.001 255);
+  --bx-surface-2:      oklch(0.952 0.004 255);
+  --bx-surface-3:      oklch(1.000 0.000 0);
+  --bx-surface-inset:  oklch(0.934 0.004 255);
+  --bx-surface-raised: oklch(0.962 0.003 255);
+  --bx-scrim:          oklch(0.30 0.016 255 / 0.28);
+
+  --bx-text-primary:   oklch(0.248 0.012 255);
+  --bx-text-secondary: oklch(0.436 0.012 255);
+  --bx-text-tertiary:  oklch(0.470 0.012 255);
+  --bx-text-disabled:  oklch(0.596 0.010 255);
+  --bx-text-inverse:   oklch(0.992 0.000 0);
+
+  --bx-border-subtle:  oklch(0.908 0.004 255);
+  --bx-border-default: oklch(0.862 0.005 255);
+  --bx-border-strong:  oklch(0.566 0.012 255);
+
+  --bx-accent:         oklch(0.478 0.070 198);
+  --bx-accent-hover:   oklch(0.420 0.066 198);
+  --bx-accent-active:  oklch(0.376 0.062 198);
+  --bx-accent-muted:   oklch(0.948 0.024 198);
+  --bx-accent-fg:      oklch(0.992 0.000 0);
+
+  --bx-ok:             oklch(0.470 0.082 152);
+  --bx-ok-bg:          oklch(0.964 0.020 152);
+  --bx-ok-border:      oklch(0.842 0.050 152);
+  --bx-warn:           oklch(0.470 0.072 66);
+  --bx-warn-bg:        oklch(0.964 0.024 70);
+  --bx-warn-border:    oklch(0.842 0.056 70);
+  --bx-error:          oklch(0.474 0.122 25);
+  --bx-error-bg:       oklch(0.964 0.020 25);
+  --bx-error-border:   oklch(0.842 0.056 25);
+  --bx-info:           oklch(0.474 0.094 252);
+  --bx-info-bg:        oklch(0.964 0.020 252);
+  --bx-info-border:    oklch(0.842 0.048 252);
+
+  /* Same principle as dark: chroma down, hue spread and legibility kept,
+     and the extremes pulled toward the middle so no field shouts. */
+  --bx-hl-1:  oklch(0.322 0.076 215);
+  --bx-hl-2:  oklch(0.398 0.108 30);
+  --bx-hl-3:  oklch(0.352 0.084 150);
+  --bx-hl-4:  oklch(0.404 0.118 350);
+  --bx-hl-5:  oklch(0.336 0.074 78);
+  --bx-hl-6:  oklch(0.392 0.112 265);
+  --bx-hl-7:  oklch(0.360 0.106 305);
+  --bx-hl-8:  oklch(0.396 0.084 118);
+  --bx-hl-1-bg: oklch(0.952 0.024 215);
+  --bx-hl-2-bg: oklch(0.956 0.024 30);
+  --bx-hl-3-bg: oklch(0.952 0.026 150);
+  --bx-hl-4-bg: oklch(0.956 0.024 350);
+  --bx-hl-5-bg: oklch(0.956 0.030 78);
+  --bx-hl-6-bg: oklch(0.956 0.022 265);
+  --bx-hl-7-bg: oklch(0.956 0.022 305);
+  --bx-hl-8-bg: oklch(0.952 0.030 118);
+
+  --bx-shadow-color: oklch(0.30 0.016 255 / 0.12);
+  --bx-shadow-key:   oklch(0.30 0.016 255 / 0.08);
+  --bx-rim:          oklch(1 0 0 / 0.70);
+}
+
+/* ── Density: dense (default) ────────────────────────────────── */
+:root,
+[data-density="dense"] {
+  /* Dense still means dense, but the baseline moved 13px → 14px. At 13px the
+     app was legible in a screenshot and tiring across a shift; a single pixel
+     buys back most of that for one extra row of vertical space per ~14 rows. */
+  --bx-row-h:        1.75rem;   /* 28px table row                   */
+  --bx-control-h-xs: 1.5rem;    /* 24px inline chip / cell editor   */
+  --bx-control-h-sm: 1.75rem;   /* 28px default control             */
+  --bx-control-h-md: 2rem;      /* 32px primary action              */
+  --bx-control-h-lg: 2.375rem;  /* 38px dialog footer               */
+  --bx-cell-px:      0.5625rem; /* 9px  table cell inline padding   */
+  --bx-cell-py:      0.1875rem; /* 3px                              */
+  --bx-field-gap:    0.4375rem; /* 7px  between related controls    */
+  --bx-group-gap:    0.875rem;  /* 14px between control groups      */
+  --bx-panel-p:      0.875rem;  /* 14px panel padding               */
+  --bx-ui-size:      0.875rem;  /* 14px UI baseline                 */
+  --bx-mono-size:    0.875rem;  /* 14px mono baseline               */
+}
+
+/* ── Density: comfortable ────────────────────────────────────── */
+[data-density="comfortable"] {
+  --bx-row-h:        2rem;      /* 32px */
+  --bx-control-h-xs: 1.75rem;   /* 28px */
+  --bx-control-h-sm: 2rem;      /* 32px */
+  --bx-control-h-md: 2.25rem;   /* 36px */
+  --bx-control-h-lg: 2.625rem;  /* 42px */
+  --bx-cell-px:      0.75rem;   /* 12px */
+  --bx-cell-py:      0.3125rem; /* 5px  */
+  --bx-field-gap:    0.5rem;    /* 8px  */
+  --bx-group-gap:    1rem;      /* 16px */
+  --bx-panel-p:      1rem;      /* 16px */
+  --bx-ui-size:      0.875rem;  /* 14px */
+  --bx-mono-size:    0.875rem;  /* 14px */
+}
+
+/* ── Tailwind theme surface ──────────────────────────────────── */
+/* `inline` keeps the var() reference in generated utilities so runtime
+   theme + density swaps work without regenerating any CSS. */
+@theme inline {
+  /* Colors */
+  --color-surface-0:      var(--bx-surface-0);
+  --color-surface-1:      var(--bx-surface-1);
+  --color-surface-2:      var(--bx-surface-2);
+  --color-surface-3:      var(--bx-surface-3);
+  --color-surface-inset:  var(--bx-surface-inset);
+  --color-surface-raised: var(--bx-surface-raised);
+  --color-scrim:          var(--bx-scrim);
+
+  --color-text:           var(--bx-text-primary);
+  --color-text-secondary: var(--bx-text-secondary);
+  --color-text-tertiary:  var(--bx-text-tertiary);
+  --color-text-disabled:  var(--bx-text-disabled);
+  --color-text-inverse:   var(--bx-text-inverse);
+
+  --color-border-subtle:  var(--bx-border-subtle);
+  --color-border:         var(--bx-border-default);
+  --color-border-strong:  var(--bx-border-strong);
+
+  --color-accent:         var(--bx-accent);
+  --color-accent-hover:   var(--bx-accent-hover);
+  --color-accent-active:  var(--bx-accent-active);
+  --color-accent-muted:   var(--bx-accent-muted);
+  --color-accent-fg:      var(--bx-accent-fg);
+
+  --color-ok:             var(--bx-ok);
+  --color-ok-bg:          var(--bx-ok-bg);
+  --color-ok-border:      var(--bx-ok-border);
+  --color-warn:           var(--bx-warn);
+  --color-warn-bg:        var(--bx-warn-bg);
+  --color-warn-border:    var(--bx-warn-border);
+  --color-error:          var(--bx-error);
+  --color-error-bg:       var(--bx-error-bg);
+  --color-error-border:   var(--bx-error-border);
+  --color-info:           var(--bx-info);
+  --color-info-bg:        var(--bx-info-bg);
+  --color-info-border:    var(--bx-info-border);
+
+  --color-hl-1: var(--bx-hl-1);  --color-hl-1-bg: var(--bx-hl-1-bg);
+  --color-hl-2: var(--bx-hl-2);  --color-hl-2-bg: var(--bx-hl-2-bg);
+  --color-hl-3: var(--bx-hl-3);  --color-hl-3-bg: var(--bx-hl-3-bg);
+  --color-hl-4: var(--bx-hl-4);  --color-hl-4-bg: var(--bx-hl-4-bg);
+  --color-hl-5: var(--bx-hl-5);  --color-hl-5-bg: var(--bx-hl-5-bg);
+  --color-hl-6: var(--bx-hl-6);  --color-hl-6-bg: var(--bx-hl-6-bg);
+  --color-hl-7: var(--bx-hl-7);  --color-hl-7-bg: var(--bx-hl-7-bg);
+  --color-hl-8: var(--bx-hl-8);  --color-hl-8-bg: var(--bx-hl-8-bg);
+
+  --color-focus:          var(--bx-accent);
+  --color-focus-contrast: var(--bx-surface-0);
+
+  /* Type */
+  /* "Vazirmatn Variable" sits in both stacks after the Latin face: the browser
+     only reaches it for codepoints the Latin font lacks, so Persian renders
+     properly wherever it appears without affecting Latin metrics. */
+  --font-sans: "Inter Variable", "Vazirmatn Variable", "Segoe UI Variable Text",
+               "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Vazirmatn Variable", "Cascadia Mono",
+               Consolas, "SF Mono", "Roboto Mono", "DejaVu Sans Mono", ui-monospace, monospace;
+  /* For Persian-only surfaces (the IranSystem output), where the Latin face
+     should not get first refusal on shared punctuation and digits. */
+  --font-persian: "Vazirmatn Variable", "Segoe UI", Tahoma, sans-serif;
+
+  /* The whole scale moved up one step. Nothing here was large to begin with —
+     a 13px label next to 13px data gives the eye no hierarchy to grab, and the
+     smallest rung was 11px, which is below what most people read comfortably
+     for a full working day. Weights are also nudged up slightly, because Inter
+     at 450 is lighter than the Segoe fallback this used to render in. */
+  --text-2xs: 0.75rem;    --text-2xs--line-height: 1.0625rem; --text-2xs--font-weight: 520; --text-2xs--letter-spacing: 0.01em;
+  --text-xs:  0.8125rem;  --text-xs--line-height:  1.1875rem; --text-xs--font-weight:  470;
+  --text-sm:  0.875rem;   --text-sm--line-height:  1.3125rem; --text-sm--font-weight:  470;
+  --text-base:0.9375rem;  --text-base--line-height:1.4375rem; --text-base--font-weight:470;
+  --text-md:  1.0625rem;  --text-md--line-height:  1.5625rem; --text-md--font-weight:  510; --text-md--letter-spacing: -0.005em;
+  --text-lg:  1.3125rem;  --text-lg--line-height:  1.8125rem; --text-lg--font-weight:  560; --text-lg--letter-spacing: -0.01em;
+  --text-xl:  1.5625rem;  --text-xl--line-height:  2.0625rem; --text-xl--font-weight:  610; --text-xl--letter-spacing: -0.015em;
+
+  --text-mono-xs:   0.75rem;   --text-mono-xs--line-height:   1.1875rem;
+  --text-mono-sm:   0.8125rem; --text-mono-sm--line-height:   1.3125rem;
+  --text-mono-base: 0.875rem;  --text-mono-base--line-height: 1.4375rem;
+  --text-mono-lg:   1rem;      --text-mono-lg--line-height:   1.5625rem;
+
+  /* Spacing base — every step is a multiple of 0.25rem (4px) */
+  --spacing: 0.25rem;
+
+  /* Radii — tight; this is an instrument, not a consumer app */
+  --radius-xs:   2px;
+  --radius-sm:   3px;   /* inputs, buttons, chips, cells        */
+  --radius-md:   5px;   /* cards, panels, popovers              */
+  --radius-lg:   8px;   /* dialogs, command palette             */
+  --radius-full: 9999px;/* switch track, status dot, pill only  */
+
+  /* Elevation */
+  --shadow-e0: none;
+  --shadow-e1: inset 0 1px 0 0 var(--bx-rim),
+               0 1px 2px -1px var(--bx-shadow-key);
+  --shadow-e2: 0 2px 4px -2px var(--bx-shadow-key),
+               0 6px 16px -4px var(--bx-shadow-color);
+  --shadow-e3: 0 4px 10px -4px var(--bx-shadow-key),
+               0 18px 44px -10px var(--bx-shadow-color);
+  --shadow-focus: 0 0 0 1px var(--color-focus-contrast),
+                  0 0 0 3px var(--color-focus);
+
+  /* Motion */
+  --ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-emphasis:   cubic-bezier(0.16, 1, 0.3, 1);
+
+  --duration-instant: 80ms;
+  --duration-fast:    120ms;
+  --duration-base:    180ms;
+  --duration-slow:    240ms;
+  --duration-slower:  320ms;
+
+  /* Density passthrough (so Tailwind utilities can read them) */
+  --spacing-row:     var(--bx-row-h);
+  --spacing-cell-x:  var(--bx-cell-px);
+  --spacing-cell-y:  var(--bx-cell-py);
+  --spacing-field:   var(--bx-field-gap);
+  --spacing-group:   var(--bx-group-gap);
+  --spacing-panel:   var(--bx-panel-p);
+
+  --height-control-xs: var(--bx-control-h-xs);
+  --height-control-sm: var(--bx-control-h-sm);
+  --height-control-md: var(--bx-control-h-md);
+  --height-control-lg: var(--bx-control-h-lg);
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+@layer base {
+  html {
+    background: var(--color-surface-0);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    accent-color: var(--color-accent);
+  }
+  body { font-size: var(--bx-ui-size); line-height: 1.375rem; }
+
+  /* Persian/Arabic surfaces. The IranSystem panel's output is the one place in
+     the app where a misread character is a wrong answer, so it gets the face
+     that was designed for the script, at a size that accounts for Arabic
+     needing more vertical room than Latin at the same nominal size. */
+  [dir="rtl"], .font-persian, [data-persian] {
+    font-family: var(--font-persian);
+    font-size: 1.0625em;
+    line-height: 1.9;
+  }
+
+  /* Every numeric/mono surface: tabular figures + slashed zero, always.
+     `.font-mono` is included because that Tailwind utility -- not the bare
+     elements -- is what components reach for; without it, hex dumps and PANs
+     lose column alignment and 0/O stop being distinguishable. */
+  code, kbd, pre, samp, .mono, .font-mono, [data-mono] {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums slashed-zero;
+    font-feature-settings: "zero" 1, "ss01" 1, "calt" 0, "liga" 0;
+    font-variant-ligatures: none;
+  }
+  /* UI type still uses tabular figures for counts, offsets, lengths. */
+  .tnum, [data-tnum] { font-variant-numeric: tabular-nums; }
+
+  ::selection { background: var(--color-accent-muted); color: var(--color-text); }
+
+  /* Focus: :focus-visible only, never :focus. */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+    border-radius: inherit;
+  }
+}

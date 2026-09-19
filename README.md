@@ -1,250 +1,160 @@
 # BufferX
 
-BufferX is a Qt 6 desktop workbench for ISO 8583 buffers and banking-adjacent operator tasks.
+BufferX is a workbench for ISO 8583 buffers and the banking-adjacent operator tasks that surround
+them — MAC calculation, PIN blocks, key crypto, RSA, TLV, and IranSystem text conversion.
 
-It is built around the practical workflow of:
+It is built around one workflow: **paste a raw buffer, see it decoded, change something, build it
+back.** Everything else is a tool that hangs off that surface without covering it up.
 
-- pasting a raw buffer and decoding it into fields
-- editing fields and rebuilding the buffer
-- switching between text and hex handling
-- applying or removing message length headers
-- enabling exact ATM-engine ISO encoding when a legacy host requires it
-- calculating and verifying MAC values
-- creating, decoding, encrypting, and decrypting PIN blocks
-- running standalone crypto transforms
-- signing and verifying RSA-SHA payloads with Base64 signatures
-- encrypting and decrypting RSA payloads with OAEP or PKCS#1 v1.5
-- parsing and building TLV payloads
-- sending framed ISO requests to a TCP endpoint
-- working with IranSystem text conversion
+> **Version 2.0 replaced the entire user interface.** The Qt/QML desktop app is gone, rewritten as a
+> React frontend in a Tauri shell. The tested C++ banking core was kept and made dependency-free, so
+> the same engine now also compiles to WebAssembly and BufferX can run in a browser.
 
-## Screenshot
+## What it does
 
-![BufferX main window](ss/1.png)
+**Buffer workspace**
+- Paste a buffer as text or hex; decode it against any of 32 packager definitions
+- Field table with inline editing, per-field hex view, filtering, and add/remove field
+- Hex view with per-field colour coding — hover a field to see its bytes, hover bytes to find the field
+- ASCII and binary length headers, with auto-detection
+- Rebuild the buffer from edited fields; staleness is tracked so you always know whether what you are
+  looking at matches what you last built
+- Save and load buffers as `.bxb` documents (JSON underneath), plus a **saved-buffers library**: a
+  folder of reusable test messages you curate, with only the folder path and your labels kept by the
+  app — the messages themselves stay in your own files *(desktop only)*
 
-## Current Feature Set
+**Security tools**
+- MAC calculate and verify (ANSI X9.19, ISO 9797-1 method 1 and 2 padding)
+- PIN blocks: ISO-0/1/3 create and decode, ISO-4 AES, 3DES block encrypt/decrypt, field 52 helpers,
+  Visa PVV, IBM 3624 offset and verify, and ATM PIN block translation across formats and key types
+- Symmetric crypto: DES and 3DES (ECB/CBC), AES-128 and AES-256 (ECB/CBC)
+- RSA: sign and verify with SHA-1/256/512, encrypt and decrypt with OAEP or PKCS#1 v1.5
 
-- Qt/QML desktop UI with embedded application icon
-- XML-driven packager definitions from `data/packagers.xml`
-- ISO 8583 encode/decode support for:
-  - `MTI + bitmap + fields`
-  - `bitmap first, no MTI`
-  - `sequential fields, no bitmap`
-- buffer input in text or hex
-- field-level editing with per-field hex helpers
-- optional ASCII and binary length headers
-- default-off `Legacy ATM Engine` ISO mode for ATM-engine-compatible BCD, binary bitmap,
-  variable-length prefix, framing, and partial-MAC behavior
-- buffer save/load as JSON
-- MAC panel for calculate and verify flows
-- PIN panel for:
-  - ISO-0, ISO-1, and ISO-3 PIN block creation/decode
-  - AES ISO-4 PIN block encryption/decryption
-  - 3DES-ECB PIN block encryption
-  - 3DES-ECB PIN block decryption
-  - field 52 load/apply helpers
-  - Visa PVV generation
-  - IBM 3624 offset calculation and verification
-  - AlmasPlus-compatible encrypted PIN-block translation
-  - ATM ANSI/ISO-0 and engine-specific ISO-1 formats
-  - DES and two-key 3DES source/destination keys
-  - destination-only engine TSN-DES output
-- crypto panel for:
-  - `DES-ECB`
-  - `DES-CBC`
-  - `3DES-ECB`
-  - `3DES-CBC`
-  - `AES-128-ECB`
-  - `AES-128-CBC`
-  - `AES-256-ECB`
-  - `AES-256-CBC`
-- RSA-SHA panel for:
-  - PEM private/public keys
-  - `SHA-1`
-  - `SHA-256`
-  - `SHA-512`
-  - Base64 signature output/input
-  - RSA OAEP SHA-1/SHA-256 encryption/decryption
-  - RSA PKCS#1 v1.5 encryption/decryption
-- TLV panel for:
-  - TLV parsing
-  - single-node TLV building
-  - constructed TLV building from child TLV hex
-  - tree and flat views
-  - TLV validation
-  - nested TLV-to-XML and XML-to-TLV editing
-- banking tools for BCD, XOR, Base64, hashes, Luhn, DES parity, random keys,
-  KCV, and ASCII/EBCDIC conversion
-- ISO TCP tester with none/ASCII/binary framing, timeouts, and wire/body views
-- IranSystem conversion panel with UTF-8 / ANSI / Hex handling
-  - normalized round-trip profile
-  - exact AlmasPlus `ToIranSystem` / `FromIranSystem` compatibility profile
-- in-app info/license panel
-- automated backend and integration-style tests
+**Analysis and utilities**
+- TLV parse (tree and flat views), build primitive and constructed nodes, validate, XML round trip
+- IranSystem conversion in both the normalized and ATM-engine (AlmasPlus-compatible) profiles
+- Toolbox: BCD, XOR, Base64, MD5/SHA hashes, Luhn, DES parity, random keys, KCV, EBCDIC
+- ISO host tester over raw TCP with none/ASCII/binary framing *(desktop only)*
+
+**A `Legacy ATM Engine` mode** (off by default) switches the codec to engine-compatible BCD, binary
+bitmaps, variable-length prefixes, framing, and partial-MAC field scope for legacy hosts.
+
+## Architecture
+
+```
+app/         React + TypeScript frontend        →  runs in Tauri or in a browser
+src-tauri/   Rust desktop shell                 →  FFI to the C ABI + TCP, file dialogs
+core/        C++17 banking core + C ABI         →  native and wasm32-emscripten
+data/        packager definitions (XML)
+assets/      source artwork for the app icons
+docs/        architecture, engine contract, UX spec, design system
+scripts/     build and code-generation helpers
+
+build/       every generated artifact, and nothing else  (git-ignored)
+  ├─ cmake/    CMake configure + C++ test binaries
+  ├─ rust/     Cargo target directory, including the shipped executable
+  └─ web/      Vite bundle, embedded into the desktop binary at build time
+```
+
+Three toolchains write here, so their output is pointed at one place rather than left in three:
+`src-tauri/.cargo/config.toml` sets Cargo's `target-dir`, `app/vite.config.ts` sets `outDir`, and
+CMake is configured with `-B build/cmake`. Deleting `build/` is always a safe clean.
+
+One JSON envelope (`bufferx_invoke`) connects the frontend to the core, served by either transport.
+The frontend does not know which one it has; capabilities are negotiated at startup and anything the
+current host cannot do is disabled with an explanation rather than hidden.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ENGINE_CONTRACT.md](docs/ENGINE_CONTRACT.md),
+[docs/UX_SPEC.md](docs/UX_SPEC.md), and [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 ## Build
 
-Requirements:
+### Requirements
 
-- CMake 3.23+
-- Visual Studio 2022 toolchain on Windows
-- Qt 6 with:
-  - `Core`
-  - `Gui`
-  - `Network`
-  - `Qml`
-  - `Quick`
-  - `QuickControls2`
-  - `Widgets`
-- OpenSSL
+- CMake 3.23+ and a C++17 compiler (MSVC 2022, clang, or gcc)
+- OpenSSL (libcrypto). On Windows: `vcpkg install openssl:x64-windows`
+- Node 20+ and pnpm
+- Rust 1.77+ (desktop app only)
 
-### Debug
+### Desktop
 
-```powershell
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug --target BufferX --config Debug
+```bash
+pnpm install
+pnpm dev
 ```
 
-Debug executable:
+`pnpm install` bootstraps both halves of the project — the root package (just the Tauri CLI) and
+`app/` (the frontend) — via a `postinstall` hook. They are two independent pnpm projects, not a
+workspace, because `app/` also ships standalone as the web build.
 
-`cmake-build-debug/BufferX.exe`
+To produce a binary:
 
-### Release
-
-```powershell
-cmake -S . -B cmake-build-release
-cmake --build cmake-build-release --target BufferX --config Release
+```bash
+pnpm build:exe
 ```
 
-Release executable:
+The C++ core is built through CMake automatically as part of the Rust build. On Windows set
+`VCPKG_ROOT` if vcpkg is not at `C:/vcpkg`.
 
-`cmake-build-release/BufferX.exe`
+> Use the Tauri CLI (`pnpm build:exe`), not `cargo build --release`. Plain cargo produces a binary
+> that still points at the dev server instead of embedding the web bundle, so it opens to
+> `ERR_CONNECTION_REFUSED` unless a Vite server happens to be running. Only the CLI sets up the
+> production context.
+>
+> Close the app before rebuilding: a running instance holds the executable open and the build fails
+> with a bare `Access is denied (os error 5)` that never names the cause.
 
-The build also produces two reusable static-library targets:
+`pnpm build` additionally produces installers (MSI and NSIS on Windows, deb/AppImage on Linux,
+dmg on macOS).
 
-- `BufferX::Core` contains the presentation-independent banking and buffer logic.
-- `BufferX::QtAdapter` contains the current QObject/QML, file-dialog, TCP, and JSON bridge.
+### Web
 
-See [Backend Architecture](docs/BACKEND_ARCHITECTURE.md) for the dependency rules and the planned Tauri/React integration boundary.
+The browser build needs the core compiled to WebAssembly, which requires the Emscripten SDK and a
+WebAssembly build of OpenSSL. Each is a one-time setup:
 
-The repo also currently has a second local release tree:
-
-```powershell
-cmake --build cmake-build-release-vs2026 --target BufferX --config Release
+```bash
+scripts/setup-emsdk.ps1              # once, ~1.5 GB   (setup-emsdk.sh on Linux/macOS)
+source third_party/emsdk/emsdk_env.sh
+bash scripts/build-openssl-wasm.sh   # once, builds libcrypto.a for wasm32
+bash scripts/build-wasm.sh           # produces app/public/wasm/bufferx_core.{js,wasm}
+pnpm web:dev
 ```
 
-## Tests
+Without `app/public/wasm/`, the frontend still builds and runs, but every engine call fails — there is
+no engine to answer it. The desktop build has no such prerequisite; it links the C++ core natively
+through Rust instead. Re-run `bash scripts/build-wasm.sh` whenever `core/` changes — the artifact is
+git-ignored on purpose, so it has to be rebuilt locally or in CI rather than pulled from the repo.
 
-Build and run:
+`pnpm web:build` produces a static bundle at `build/web/`, deployable as-is. `pnpm web:build:hosted`
+builds the same bundle under a `/bufferx/` base path with source maps disabled, for deployment behind
+a reverse proxy at a subpath rather than at the origin root.
 
-```powershell
-cmake --build cmake-build-release --target BufferXTests --config Release
-cmake-build-release\BufferXTests.exe
+### Tests
+
+```bash
+cmake -S . -B build/cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build/cmake
+ctest --test-dir build/cmake --output-on-failure
+pnpm typecheck
+pnpm test
 ```
 
-Coverage currently includes:
+Or run everything in one pass with `powershell scripts/verify.ps1` (Windows) — it configures, builds,
+and tests all of C++, the ABI, and the frontend, and exits non-zero on the first failure.
 
-- hex parsing and formatting
-- XML loader behavior and failure cases
-- ISO 8583 encode/decode paths
-- packager layout handling
-- MAC calculation and verification paths
-- PIN block creation/decode/encrypt/decrypt paths
-- Visa PVV and IBM 3624 paths
-- DES/AES crypto backend paths
-- RSA-SHA sign/verify paths
-- TLV parse and build paths
-- nested TLV XML round trips and validation
-- loopback TCP request/response framing
-- IranSystem conversion paths
-- save/load buffer persistence
+The C++ suite includes two differential tests that verify the portable Windows-1256 and EBCDIC codecs
+are byte-for-byte identical to the Win32 APIs they replaced.
 
-## Packager XML
+## Limits
 
-Packager definitions live in:
+- BufferX is test tooling, not an HSM. Clear PINs and keys pass through process memory by design.
+- Nothing secret is ever persisted, logged, or placed in a URL — but the machine running it is still
+  the trust boundary.
+- RSA keys are supplied as PEM text (with a file picker on desktop).
+- Nested TLV editing is XML-based rather than drag-and-drop.
 
-`data/packagers.xml`
+## Licence and credits
 
-The loader reads metadata such as:
+Proprietary — see [LICENSE](LICENSE).
 
-- `Name`
-- `MacMethod`
-- `MacSize`
-- `BitmapIndex`
-- `SecondPartBitmap`
-- `FieldCount`
-- `LenFormat`
-- `LenLen`
-
-Field definitions include:
-
-- `FieldId`
-- `FieldType`
-- `FieldLength`
-- `FieldDesc`
-- `Flags`
-
-## Project Layout
-
-- `main.cpp`
-  - Qt application entry point
-- `ui/Main.qml`
-  - main desktop interface
-- `src/Backend.*`
-  - thin QML-facing bridge and JSON API
-- `src/BufferXCore.h`
-  - supported include entry point for native backend consumers
-- `docs/BACKEND_ARCHITECTURE.md`
-  - core/adapter boundary and future UI bridge rules
-- `src/Iso8583.*`
-  - core encode/decode logic
-- `src/Packager*`
-  - packager types and XML loader
-- `src/Mac.*`
-  - MAC engine
-- `src/PinBlock.*`
-  - ISO-0, ISO-1, ISO-3, and ISO-4 PIN block support
-- `src/PinVerification.*`
-  - Visa PVV and IBM 3624 utilities
-- `src/PinTranslation.*`
-  - ATM-engine ANSI/ISO-1 and DES/3DES/TSN-DES translation
-- `src/BankingTools.*`
-  - banking conversion, hash, key, and validation helpers
-- `src/Crypto.*`
-  - standalone cipher transforms
-- `src/RsaSha.*`
-  - RSA-SHA sign/verify support
-- `src/Tlv.*`
-  - TLV parsing and encoding helpers
-- `src/IranSystem.*`
-  - IranSystem conversion support
-- `src/Hex.*`
-  - hex utilities
-- `assets/`
-  - application icon assets
-- `tests/BufferXTests.cpp`
-  - test harness
-- `ss/`
-  - README screenshots
-
-## Known Limits
-
-- legacy mode is intentionally off by default; enable it only for ATM-engine-compatible hosts
-- external networks can still have institution-specific field and MAC rules outside the supplied XML
-- RSA-SHA support expects PEM keys and Base64 signatures
-- nested TLV editing uses XML rather than a drag-and-drop tree editor
-- cryptographic and clear-PIN tools are for controlled testing only; BufferX is not an HSM,
-  secure cryptographic device, or production key-management system
-- there is no installer/package flow yet
-
-## License
-
-This repository is proprietary.
-
-Copyright (c) 2026 Amirsalar Saberi rad. All rights reserved.
-
-Website: https://amirsrad.ir
-
-## Status
-
-BufferX is a banking-message workbench for ISO 8583 decoding/building, legacy ATM-engine compatibility, MAC and PIN work, crypto and RSA operations, TLV editing, banking conversions, IranSystem conversion, and framed TCP testing.
+Created by Amirsalar Saberi rad — <https://amirsrad.ir>

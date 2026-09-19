@@ -1,0 +1,21 @@
+{
+  "name": "bufferx",
+  "private": true,
+  "version": "2.0.0",
+  "description": "ISO 8583 and banking cryptography workbench",
+  "scripts": {
+    "postinstall": "pnpm --dir app install",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:exe": "tauri build --no-bundle",
+    "web:dev": "pnpm --dir app dev",
+    "web:build": "pnpm --dir app build",
+    "web:build:hosted": "pnpm --dir app build:hosted",
+    "typecheck": "pnpm --dir app typecheck",
+    "test": "pnpm --dir app test",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.3.0"
+  }
+}

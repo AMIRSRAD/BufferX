@@ -1,132 +1,87 @@
 # BufferX Status and Roadmap
 
-## Current Goal
+## Current goal
 
-Keep BufferX as a complete desktop workbench for ISO 8583 buffer handling and related banking/operator utilities.
+Ship 2.0: the same banking workbench, rebuilt on a stack that can run on the desktop *and* in a
+browser, with an interface designed for an operator who lives in it all day.
 
-The app is now beyond the original parser prototype. It includes the core ISO 8583 workflow plus dedicated tools for MAC, PIN blocks, crypto transforms, RSA-SHA signatures, TLV parsing/building, and IranSystem conversion.
+## 2.0 — the rewrite
 
-## Completed Work
+### What changed and why
 
-### Core Parser and Packagers
+The Qt/QML app had reached the end of its shape. Tools lived in mutually exclusive footer popovers,
+so an ISO investigation — which is inherently multi-tool — forced the operator to memorise values
+between panel toggles. The UI was a single 3,897-line QML file positioned in absolute window pixels,
+which could not be made responsive and could never run on the web.
 
-- Added automated tests wired through CMake.
-- Replaced fragile XML parsing with Qt XML loading.
-- Added explicit packager field type mapping and clearer unsupported-type handling.
-- Added numeric validation paths.
-- Improved codec behavior around packager metadata and non-default layouts.
-- Preserved the main paste-buffer workflow for decoding, editing, and rebuilding buffers.
+The banking logic had the opposite problem: it was good, tested, and worth keeping. So 2.0 replaced
+the interface and kept the engine.
 
-### UI Workflow
+### Done
 
-- Restored a visible main buffer paste area.
-- Added footer navigation for the main tool sections.
-- Added visible field decoding and field editing flow.
-- Added JSON buffer save/load workflow.
-- Improved text sizing and contrast for dark UI use.
-- Embedded the application icon in the executable and window.
+**Core made dependency-free** — the two files that still touched Qt were replaced:
+- `PackagerLoader` now uses `XmlLite`, a purpose-built reader for the XML subset configuration files
+  actually use. Verified against the real `data/packagers.xml` (32 packagers) plus malformed input.
+- `IranSystem` now uses `TextCodec` instead of `QString` and Win32. The Windows-1256 table is
+  *generated from the Win32 API it replaces* and proven byte-identical by a differential test across
+  all 256 decode bytes and 1,674 encode codepoints. Persian conversion works off-Windows for the
+  first time.
+- EBCDIC (code page 037) got the same treatment and the same differential proof.
+- `BufferXCore` now depends on nothing but C++17 and OpenSSL, and it is also compiled to
+  WebAssembly — the browser build runs the identical banking logic, not a reimplementation.
 
-### Operator Tools
+**Qt removed** — `ui/Main.qml`, `Backend.cpp/h`, `main.cpp`, and every Qt reference in the build.
 
-- Added MAC calculation and verification.
-- Added a default-off `Legacy ATM Engine` mode with engine-compatible IFB/IFA encoding,
-  binary bitmaps, packed MTI/length prefixes, framing profiles, and partial-MAC field scope.
-- Added PIN handling:
-  - ISO-0, ISO-1, and ISO-3 creation/decode
-  - AES ISO-4 encryption/decryption
-  - 3DES-ECB PIN block encryption
-  - 3DES-ECB PIN block decryption
-  - field 52 load/apply helpers
-  - Visa PVV generation
-  - IBM 3624 offset calculation/verification
-  - AlmasPlus ANSI/ISO-1 encrypted PIN-block translation
-  - DES and two-key 3DES source/destination transforms
-  - destination-only TSN-DES compatibility
-- Added encryption/decryption tools:
-  - DES-ECB
-  - DES-CBC
-  - 3DES-ECB
-  - 3DES-CBC
-  - AES-128-ECB
-  - AES-128-CBC
-  - AES-256-ECB
-  - AES-256-CBC
-- Added RSA-SHA signing and verification:
-  - PEM private/public key input
-  - SHA-1, SHA-256, and SHA-512
-  - Base64 signature output/input
-  - OAEP SHA-1/SHA-256 and PKCS#1 v1.5 RSA encryption/decryption
-- Added TLV handling:
-  - parse TLV hex
-  - build primitive TLV nodes
-  - build constructed TLV nodes from child TLV hex
-  - tree and flat inspection views
-  - validation and editable nested XML round trips
-- Added banking conversion/key tools for BCD, XOR, Base64, hashes, Luhn, parity,
-  random keys, KCV, and EBCDIC.
-- Added an ISO TCP tester with none/ASCII/binary framing and loopback integration tests.
-- Added IranSystem conversion with UTF-8, ANSI, and Hex handling.
-- Added an explicit ATM-engine IranSystem profile matching AlmasPlus `W2IS` shaping,
-  Persian-run justification, digit handling, lam-alef collapsing, and direct reverse mapping.
+**New architecture** — `core/` (C++ + C ABI), `app/` (React), `src-tauri/` (Rust shell), connected by
+one versioned JSON envelope. All build output — CMake, Cargo, and Vite — now lands in a single
+git-ignored `build/` folder rather than three scattered locations. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), which documents the real, as-shipped 40-operation
+engine contract.
 
-### Documentation and Repository
+**Full interface shipped**, not just the shell: persistent rail (labeled by default — an earlier
+icon-only default asked the operator to learn a vocabulary for MAC, PIN, Crypto, and RSA, which have
+no conventional icon), tabbed buffer documents, a tool dock that no longer occludes the workspace so
+MAC and PIN can stay open beside the field table they act on, a command palette, a Problems drawer
+that correctly retracts stale entries when the condition that raised them is resolved, dark and light
+themes at parity with verified contrast ratios, two density modes, and self-hosted typefaces (Inter,
+JetBrains Mono, and Vazirmatn for Persian) rather than silently falling back to whatever the OS had.
 
-- Added GitHub README with feature list, build steps, tests, screenshots, layout, limits, and ownership details.
-- Added proprietary license file.
-- Added creator/info section in the app:
-  - Amirsalar Saberi rad
-  - https://amirsrad.ir
-- Added screenshot folder for README images.
+**Every tool panel**: the buffer workspace (paste, decode, edit, rebuild, hex view with per-field
+colour and bidirectional hover linking, auto-detected length headers), MAC, PIN, Crypto, RSA, TLV,
+Toolbox, Network (TCP host tester), IranSystem, Settings, About, and a saved-buffers library — a
+folder of `.bxb` documents the operator curates, with only the folder path and per-file labels held
+by the app; the messages themselves stay in the operator's own files, never in application storage.
 
-## Build and Test
+**Specifications retained with an honest status** —
+[ENGINE_CONTRACT.md](docs/ENGINE_CONTRACT.md), [UX_SPEC.md](docs/UX_SPEC.md), and
+[DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) were written before implementation and, like any spec,
+drifted from what shipped in real ways (op names, a few UI defaults, the mono typeface). Rather than
+leave that silently wrong, each now carries a top-of-file notice naming exactly what changed and
+pointing at the real source — including a generated, source-of-truth op index at the end of
+`ENGINE_CONTRACT.md`.
 
-### Debug Build
+### Remaining
 
-```powershell
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug --target BufferX --config Debug
-```
+1. **Port the legacy regression suite.** `core/tests/legacy-qt/BufferXTests.cpp` still holds the ISO,
+   MAC, PIN, crypto, RSA, and TLV vectors and does not build — it links the deleted Qt adapter. See
+   `core/tests/legacy-qt/README.md` for what has already been ported elsewhere and what has not. This
+   is the highest-value item left: it is the safety net for everything above.
+2. **Wire the WebAssembly build into a repeatable process.** The pipeline
+   (`scripts/setup-emsdk.*`, `scripts/build-openssl-wasm.sh`, `scripts/build-wasm.sh`) works — it has
+   been run successfully and produces a current, non-stale `bufferx_core.wasm` — but it is a manual,
+   local step on top of a ~1.5 GB toolchain, and its output is git-ignored by design. It needs either
+   a CI job that runs it and publishes the artifact, or a documented decision that the web build is
+   built once per release rather than per clone.
+3. **Installer and release packaging.** Tauri can produce MSI/NSIS/deb/AppImage/dmg via `pnpm build`;
+   none is wired to an actual release workflow yet.
+4. **Institution-specific ISO profiles and MAC presets**, once real host specifications are available.
+5. **Drag-and-drop TLV tree editing** — nested editing is still XML-based.
 
-### Release Build
+## Quality bar
 
-```powershell
-cmake -S . -B cmake-build-release
-cmake --build cmake-build-release --target BufferX --config Release
-```
-
-### Secondary Release Tree
-
-```powershell
-cmake --build cmake-build-release-vs2026 --target BufferX --config Release
-```
-
-### Tests
-
-```powershell
-cmake --build cmake-build-release --target BufferXTests --config Release
-cmake-build-release\BufferXTests.exe
-```
-
-## Remaining Product Work
-
-- Add institution-specific ISO profiles as real host specifications become available.
-- RSA operations currently accept PEM text rather than loading key files directly.
-- Nested TLV editing is XML-based rather than a drag-and-drop tree.
-- Crypto and clear-PIN operations remain test tooling, not an HSM/SCD replacement.
-- No installer or packaged release workflow exists yet.
-
-## Next Tasks
-
-1. Add key-file load helpers for RSA private/public keys.
-2. Add institution-specific MAC presets when their specifications are supplied.
-3. Add a drag-and-drop TLV tree editor if XML editing is insufficient.
-4. Add installer/release packaging for Windows.
-5. Expand screenshots and usage examples in the README.
-
-## Quality Bar
-
-- Main workflows should remain paste-first and fast.
-- Supported formats must be explicit and tested.
-- Unsupported formats should fail with actionable errors.
-- UI sections should stay separate and discoverable.
-- Documentation should match the actual released app state.
+- The paste-first buffer workflow stays the fastest path through the app.
+- Supported formats are explicit and tested; unsupported ones fail with actionable errors.
+- Every capability the host cannot provide is disabled with an explanation, never silently missing.
+- PINs and keys are never persisted, logged, or placed in a URL.
+- Documentation matches the shipped state — and where a design doc predates the code, it says so
+  rather than letting a reader assume it is current.

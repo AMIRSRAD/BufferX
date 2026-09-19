@@ -1,0 +1,4 @@
+# esbuild ships a prebuilt platform binary and needs its install script to run.
+# pnpm 10+ reads build-script approval from here rather than package.json.
+allowBuilds:
+  esbuild: true

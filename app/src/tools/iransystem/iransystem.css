@@ -1,0 +1,54 @@
+/*
+ * Persian rendering for the IranSystem tool (UX_SPEC 3.6: "Persian output
+ * renders with dir=rtl and a Persian-capable font stack; the hex line stays
+ * LTR and monospace").
+ *
+ * The app's UI stack is Inter first, which has no Arabic-script coverage and
+ * would fall back per-platform to whatever the browser picks -- often a
+ * different face for shaped and unshaped runs, which makes a round trip
+ * impossible to compare by eye. This stack names the faces these operators
+ * actually have installed (Iranian office machines ship IRANSans/Vazir; Windows
+ * ships Segoe UI/Tahoma with full Arabic coverage; Linux and macOS reach the
+ * Noto faces) and ends at the generic `sans-serif`.
+ *
+ * It is a font stack only. Every colour, size and space in this tool comes from
+ * the design tokens.
+ */
+.bx-persian {
+  font-family:
+    'Vazirmatn', 'Vazir', 'IRANSans', 'IRANSansX', 'Sahel', 'Shabnam', 'Segoe UI',
+    'Tahoma', 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Geeza Pro', 'Arial Unicode MS',
+    sans-serif;
+  /* Arabic-script shaping needs its ligatures; the app disables them globally
+     for the monospace panes, so re-enable them here. */
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+  line-height: 1.9;
+}
+
+/*
+ * UX_SPEC 5.4: an engine call shows nothing for 120ms, then an indeterminate
+ * 2px bar along the top edge of the affected region -- never a blocking
+ * overlay. The panel mounts the bar; this is only its motion.
+ */
+@keyframes bx-progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+.bx-progress-bar {
+  animation: bx-progress-slide 1.1s var(--ease-standard, cubic-bezier(0.2, 0, 0, 1)) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Motion is the only thing conveyed here, so it degrades to a static
+     three-quarter bar rather than disappearing. */
+  .bx-progress-bar {
+    animation: none;
+    width: 75%;
+  }
+}

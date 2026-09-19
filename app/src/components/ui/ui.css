@@ -1,0 +1,93 @@
+/* ─────────────────────────────────────────────────────────────
+   src/components/ui/ui.css
+
+   The small amount of CSS that Tailwind utilities cannot express:
+   keyframes, and the global reduced-motion contract from
+   DESIGN_SYSTEM.md §5.4.
+
+   Every value here reads a design token. No raw colour, ever.
+   This file is imported by the primitives that need it; Vite
+   deduplicates, so importing it from several components is free.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Skeleton shimmer (§4.23) ───────────────────────────────── */
+@keyframes bx-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.bx-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.bx-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* 8% of primary text ink sweeping across the block. */
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-text) 8%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: bx-shimmer 1200ms linear infinite;
+}
+
+/* ── Layer enter / exit (§3.4, §5.1) ────────────────────────── */
+@keyframes bx-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bx-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes bx-dialog-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Scrim: 120ms fade, both directions. */
+.bx-anim-scrim[data-state="open"] {
+  animation: bx-fade-in var(--duration-fast) var(--ease-standard);
+}
+.bx-anim-scrim[data-state="closed"] {
+  animation: bx-fade-out var(--duration-fast) var(--ease-accelerate);
+}
+
+/* Dialog / command palette: 240ms in on the one expressive curve,
+   120ms out — exit is always faster than enter. */
+.bx-anim-dialog[data-state="open"] {
+  animation: bx-dialog-in var(--duration-slow) var(--ease-emphasis);
+}
+.bx-anim-dialog[data-state="closed"] {
+  animation: bx-fade-out var(--duration-fast) var(--ease-accelerate);
+}
+
+/* Popover / tooltip / menu: 180ms in, 120ms out. Opacity only —
+   Radix owns the positioning transform on the wrapper. */
+.bx-anim-layer[data-state="open"],
+.bx-anim-layer[data-state="delayed-open"] {
+  animation: bx-fade-in var(--duration-base) var(--ease-decelerate);
+}
+.bx-anim-layer[data-state="closed"] {
+  animation: bx-fade-out var(--duration-fast) var(--ease-accelerate);
+}
+
+/* ── Reduced motion (§5.4) ──────────────────────────────────────
+   Every animated cue keeps a static equivalent; no information is
+   lost, nothing is merely hidden. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Shimmer becomes a flat 60% block. */
+  .bx-skeleton::after { display: none; }
+  .bx-skeleton { opacity: 0.6; }
+
+  /* Indeterminate spinners become a static ring; the component
+     pairs them with a text label and aria-busy. */
+  .bx-spinner { animation: none !important; }
+}

@@ -1,55 +1,56 @@
-# C++ objects and libs
-*.slo
-*.lo
-*.o
-*.a
-*.la
-*.lai
-*.so
-*.so.*
-*.dll
-*.dylib
+# ── Build output ────────────────────────────────────────────────
+# Every toolchain writes under build/: CMake, Cargo, and Vite are each
+# configured to target a subfolder, so this one line covers all of them and
+# `rm -rf build` is always a safe clean.
+build/
 
-# Qt-es
-object_script.*.Release
-object_script.*.Debug
-*_plugin_import.cpp
-/cmake-build*
-/.qmake.cache
-/.qmake.stash
-*.pro.user
-*.pro.user.*
-*.qbs.user
-*.qbs.user.*
-*.moc
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
-*.qmlc
-*.jsc
-Makefile*
-*build-*
-*.qm
-*.prl
-
-# Qt unit tests
-target_wrapper.*
-
-# QtCreator
-*.autosave
-
-# QtCreator Qml
-*.qmlproject.user
-*.qmlproject.user.*
-
-# QtCreator CMake
-CMakeLists.txt.user*
-
-# QtCreator 4.8< compilation database
+# Stragglers from a toolchain invoked by hand, outside the configured paths.
+target/
+dist/
+cmake-build*/
+out/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
 compile_commands.json
 
-# QtCreator local machine specific files for imported projects
-*creator.user*
+# ── Dependencies ────────────────────────────────────────────────
+node_modules/
+third_party/
+# Tauri regenerates these from tauri.conf.json and the capability files.
+src-tauri/gen/
 
-*_qmlcache.qrc
+# Generated WebAssembly artifacts (produced by scripts/build-wasm.sh)
+app/public/wasm/
+
+# ── Incidental build products ───────────────────────────────────
+*.tsbuildinfo
+.eslintcache
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# ── Editors / OS ────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ── Local secrets and scratch ───────────────────────────────────
+# Nothing containing keys or PINs should ever be committed.
+*.pem
+*.key
+.env
+.env.*
+!.env.example

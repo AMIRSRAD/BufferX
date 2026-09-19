@@ -1,0 +1,61 @@
+/* Attribute hooks for the two Appearance preferences that cannot be expressed
+   as inline style on `<html>` (UX_SPEC 3.9 → Appearance).
+
+   `components/ui/ui.css` already honours `prefers-reduced-motion`. The spec also
+   offers an explicit `Reduce motion: Always`, which the media query alone cannot
+   express, and a `field colour palette on/off` switch for the ribbon and the
+   byte view. Both are written onto `<html>` by `preferences.ts::applyAppearance`
+   and resolved here.
+
+   This file is imported by `SettingsPanel.tsx`, which is lazy — but the panel is
+   also the only way to turn either preference on, and `applyAppearance` writes
+   the neutral values (`system` / `on`) on boot, so nothing renders wrong before
+   the first open. */
+
+/* ── Reduce motion: Always ──────────────────────────────────────────────── */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* The static equivalents ui.css defines for the media-query case, repeated so
+   the manual override loses no information either. */
+html[data-motion='reduced'] .bx-skeleton::after {
+  display: none;
+}
+html[data-motion='reduced'] .bx-skeleton {
+  opacity: 0.6;
+}
+html[data-motion='reduced'] .bx-spinner {
+  animation: none !important;
+}
+
+/* ── Field / byte colour palette: off ───────────────────────────────────────
+   The eight highlight slots collapse to a single neutral pair rather than
+   disappearing: a highlight still marks its range, it just stops carrying a
+   hue. Overriding the tokens keeps every consumer (`bg-hl-3-bg`, `text-hl-3`,
+   the hex viewer, the field ribbon) working without any of them knowing the
+   preference exists. */
+html[data-field-colors='off'] {
+  --color-hl-1: var(--color-text-secondary);
+  --color-hl-2: var(--color-text-secondary);
+  --color-hl-3: var(--color-text-secondary);
+  --color-hl-4: var(--color-text-secondary);
+  --color-hl-5: var(--color-text-secondary);
+  --color-hl-6: var(--color-text-secondary);
+  --color-hl-7: var(--color-text-secondary);
+  --color-hl-8: var(--color-text-secondary);
+
+  --color-hl-1-bg: var(--color-surface-raised);
+  --color-hl-2-bg: var(--color-surface-raised);
+  --color-hl-3-bg: var(--color-surface-raised);
+  --color-hl-4-bg: var(--color-surface-raised);
+  --color-hl-5-bg: var(--color-surface-raised);
+  --color-hl-6-bg: var(--color-surface-raised);
+  --color-hl-7-bg: var(--color-surface-raised);
+  --color-hl-8-bg: var(--color-surface-raised);
+}

@@ -525,7 +525,7 @@ export default function TlvPanel() {
             // Promoted to a workspace tab the tool takes the three-pane layout
             // of UX_SPEC 3.5: source, encoded, structure. In the dock it stacks.
             promoted &&
-              'grid grid-cols-[minmax(16rem,1fr)_minmax(14rem,1fr)_minmax(22rem,2fr)] items-start',
+              '@min-[960px]:grid @min-[960px]:grid-cols-[minmax(16rem,1fr)_minmax(14rem,1fr)_minmax(22rem,2fr)] items-start',
           )}
         >
           <div className="flex min-w-0 flex-col gap-group">
@@ -824,7 +824,7 @@ export default function TlvPanel() {
           <div
             className={cn(
               'grid min-h-0 gap-group',
-              promoted ? 'grid-cols-2 items-stretch' : 'grid-cols-1',
+              promoted ? 'grid-cols-1 @min-[720px]:grid-cols-2 items-stretch' : 'grid-cols-1',
             )}
           >
             <div className="flex min-h-0 min-w-0 flex-col gap-field">

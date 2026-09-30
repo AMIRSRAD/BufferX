@@ -1,31 +1,9 @@
-/**
- * The BufferX application shell (UX_SPEC 1.1).
- *
- * ```
- * ┌──────────────────────────────────────────────────────────────┐
- * │ COMMAND BAR                                            36px  │
- * ├──────┬────────────────────────────────┬──────────────────────┤
- * │ RAIL │ WORKSPACE                      │ TOOL DOCK            │
- * ├──────┴────────────────────────────────┴──────────────────────┤
- * │ PROBLEMS                                                     │
- * ├──────────────────────────────────────────────────────────────┤
- * │ STATUS STRIP                                           24px  │
- * └──────────────────────────────────────────────────────────────┘
- * ```
- *
- * The shell owns layout, the global keymap, region focus, and the two modals
- * the spec permits (closing a dirty buffer; the shortcut sheet is a third,
- * non-blocking one). It owns no tool state: everything else is a store or a
- * panel.
- *
- * Every region is a flex/grid child with `min-h-0` / `min-w-0` and its own
- * internal scroll, and every breakpoint is measured from the shell's own box
- * with a `ResizeObserver` — nothing here is positioned in window pixels
- * (UX_SPEC 1.5).
+/** Application shell with document context, workspace tabs and an optional
+ * resizable buffer/tool split. Hidden workspaces remain mounted for drafts.
  */
 
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Menu, Minimize2, PanelRight } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { IconButton } from '@/components/ui/IconButton'
@@ -44,7 +22,8 @@ import { ProblemsDrawer, type ProblemFilter } from './ProblemsDrawer'
 import { RAIL_SLOTS, Rail } from './Rail'
 import { StatusStrip } from './StatusStrip'
 import { PanelSkeleton, ToolDock } from './ToolDock'
-import { LayoutProvider, defaultDockWidth, dockIsOverlay, useContainerSize } from './layout'
+import { WorkspaceTabs } from './WorkspaceTabs'
+import { LayoutProvider, defaultDockWidth, useContainerSize } from './layout'
 import { clearAllToolStatus } from './toolStatus'
 import {
   SHELL_ACTION_EVENT,
@@ -88,7 +67,6 @@ export function AppShell() {
   const closeTab = useBuffers((state) => state.closeTab)
   const reopenLast = useBuffers((state) => state.reopenLast)
 
-  const open = useTools((state) => state.open)
   const focusedTool = useTools((state) => state.focused)
   const promoted = useTools((state) => state.promoted)
   const toggleTool = useTools((state) => state.toggleTool)
@@ -111,13 +89,17 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false)
   const [railMenuOpen, setRailMenuOpen] = useState(false)
-  const [dockVisible, setDockVisible] = useState(true)
+  const [splitRequested, setSplitRequested] = useState(false)
   const [dockWidth, setDockWidth] = useState(() => defaultDockWidth(mode))
   const [problemsExpanded, setProblemsExpanded] = useState(false)
   const [problemFilter, setProblemFilter] = useState<ProblemFilter>('all')
   const [focusedRegion, setFocusedRegion] = useState<Region>('workspace')
   const [pendingClose, setPendingClose] = useState<BufferTab | null>(null)
   const [announcement, setAnnouncement] = useState('')
+
+  useEffect(() => {
+    setFocusedRegion(promoted ? 'dock' : 'workspace')
+  }, [promoted])
 
   const regionRefs = useRef<Partial<Record<Region, HTMLElement | null>>>({})
 
@@ -140,11 +122,12 @@ export function AppShell() {
     setDockWidth(defaultDockWidth(mode))
   }, [mode])
 
-  const overlayDock = dockIsOverlay(mode)
   const railAsMenu = mode === 'compact'
   const showRail = !railAsMenu
-  const railIsLabeled = mode === 'ultra' ? true : railLabeled
-  const dockOpen = dockVisible && open.length > 0 && open.some((id) => id !== promoted)
+  const railIsLabeled = railLabeled
+  const canSplit = size.width - (showRail ? (railIsLabeled ? 208 : 52) : 0) >= 1050
+  const split = splitRequested && canSplit && promoted !== null
+  const toolWidth = Math.min(dockWidth, Math.max(380, size.width - (railIsLabeled ? 208 : 52) - 600))
 
   const announce = useCallback((message: string) => {
     setAnnouncement(message)
@@ -182,7 +165,7 @@ export function AppShell() {
           break
       }
 
-      if (command.startsWith('jump-to-field:')) {
+      if (command.startsWith('jump-to-field:') || ['open-buffer', 'filter-fields', 'add-field', 'expand-value'].includes(command)) {
         unpromote()
         regionRefs.current.workspace?.focus()
       }
@@ -195,11 +178,12 @@ export function AppShell() {
 
   const regionAction = useCallback(
     (kind: 'primary' | 'secondary') => {
-      const detail: ShellActionDetail = { kind, region: focusedRegion }
-      if (focusedRegion === 'dock' && focusedTool) detail.tool = focusedTool
+      const toolActive = promoted && (focusedRegion !== 'workspace' || !split)
+      const detail: ShellActionDetail = { kind, region: toolActive ? 'dock' : focusedRegion }
+      if (toolActive) detail.tool = promoted
       document.dispatchEvent(new CustomEvent<ShellActionDetail>(SHELL_ACTION_EVENT, { detail }))
     },
-    [focusedRegion, focusedTool],
+    [focusedRegion, promoted, split],
   )
 
   /* ── Buffer lifecycle ───────────────────────────────────────────────────── */
@@ -239,7 +223,7 @@ export function AppShell() {
         const candidate = REGIONS[(((index + delta * step) % REGIONS.length) + REGIONS.length) % REGIONS.length]
         if (!candidate) continue
         const element = regionRefs.current[candidate]
-        if (!element) continue
+        if (!element || element.hidden) continue
         element.focus()
         setFocusedRegion(candidate)
         announce(`${REGION_LABEL[candidate]} focused.`)
@@ -269,7 +253,6 @@ export function AppShell() {
         dispatch('history')
         return
       }
-      setDockVisible(true)
       toggleTool(id)
       setFocusedRegion('dock')
     },
@@ -294,15 +277,20 @@ export function AppShell() {
   const handlers = useMemo<ShortcutHandlers>(
     () => ({
       openPalette: () => setPaletteOpen((current) => !current),
-      toggleDock: () => setDockVisible((current) => !current),
+      toggleDock: () => {
+        if (promoted) unpromote()
+        else if (focusedTool) promote(focusedTool)
+      },
       toggleProblems: () => setProblemsExpanded((current) => !current),
       promoteFocusedTool: () => {
-        if (promoted) {
-          unpromote()
+        if (!canSplit) {
+          toast.info('Widen the window to use split view.')
           return
         }
-        if (focusedTool) promote(focusedTool)
-        else toast.info('Focus a tool in the dock first.')
+        if (focusedTool) {
+          promote(focusedTool)
+          setSplitRequested((current) => !current)
+        } else toast.info('Open a tool first.')
       },
       railDestination,
       newBuffer: () => {
@@ -318,7 +306,6 @@ export function AppShell() {
       },
       stepBuffer,
       openSettings: () => {
-        setDockVisible(true)
         openTool('settings')
       },
       openShortcutSheet: () => setShortcutSheetOpen(true),
@@ -330,6 +317,7 @@ export function AppShell() {
     }),
     [
       activeId,
+      canSplit,
       clearSecrets,
       dispatch,
       focusWorkspace,
@@ -360,7 +348,6 @@ export function AppShell() {
       }
       const tool = getTool(problem.source.toLowerCase())
       if (tool) {
-        setDockVisible(true)
         openTool(tool.id)
         return
       }
@@ -371,7 +358,6 @@ export function AppShell() {
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
 
-  const promotedTool = promoted ? getTool(promoted) : undefined
   const problemsBodyHeight = Math.max(120, Math.round(height * 0.3))
 
   const railElement = (
@@ -383,7 +369,6 @@ export function AppShell() {
       // would produce a menu of unlabelled glyphs.
       {...(railAsMenu ? {} : { onToggleLabels: toggleRail })}
       onNavigate={() => {
-        setDockVisible(true)
         setRailMenuOpen(false)
       }}
     />
@@ -410,6 +395,7 @@ export function AppShell() {
           <CommandBar
             onOpenPalette={() => setPaletteOpen(true)}
             onRequestCloseBuffer={requestCloseBuffer}
+            onCreateBuffer={focusWorkspace}
             leading={
               railAsMenu ? (
                 <Popover
@@ -446,94 +432,39 @@ export function AppShell() {
             </div>
           ) : null}
 
-          <main
-            ref={regionRef.workspace}
-            tabIndex={-1}
-            aria-label={promotedTool ? `${promotedTool.title} (promoted)` : 'Buffer workspace'}
-            onFocusCapture={() => setFocusedRegion('workspace')}
-            className={cn(
-              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden focus:outline-none',
-              focusedRegion === 'workspace' && 'ring-1 ring-accent ring-inset',
-            )}
-          >
-            {promotedTool ? (
-              <>
-                <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border bg-surface-2 px-2">
-                  <promotedTool.icon
-                    size={14}
-                    strokeWidth={1.5}
-                    absoluteStrokeWidth
-                    aria-hidden="true"
-                    className="shrink-0"
-                  />
-                  <span className="text-sm font-medium">{promotedTool.title}</span>
-                  <span className="text-2xs text-text-tertiary">promoted to the workspace</span>
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    icon={Minimize2}
-                    onClick={unpromote}
-                    className="ml-auto"
-                  >
-                    Return to buffer
-                  </Button>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                  <PanelErrorBoundary title={promotedTool.title}>
-                    <Suspense fallback={<PanelSkeleton />}>
-                      <promotedTool.Panel />
-                    </Suspense>
-                  </PanelErrorBoundary>
-                </div>
-              </>
-            ) : (
-              <PanelErrorBoundary title="the buffer workspace">
-                <Suspense fallback={<PanelSkeleton />}>
-                  <BufferWorkspace />
-                </Suspense>
-              </PanelErrorBoundary>
-            )}
-          </main>
-
-          {dockOpen ? (
-            <div
-              ref={regionRef.dock}
-              tabIndex={-1}
-              onFocusCapture={() => setFocusedRegion('dock')}
-              className={cn(
-                'flex min-h-0 focus:outline-none',
-                // 900–1199px and below: the dock floats over the right edge of
-                // the workspace instead of taking a column (UX_SPEC 1.5).
-                overlayDock ? 'absolute inset-y-0 right-0 z-30' : 'shrink-0',
-                mode === 'compact' && 'left-0',
-                focusedRegion === 'dock' && 'ring-1 ring-accent ring-inset',
-              )}
-            >
-              <ToolDock
-                width={dockWidth}
-                onWidthChange={(width) => {
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div onFocusCapture={() => setFocusedRegion(promoted ? 'dock' : 'workspace')}>
+              <WorkspaceTabs split={split} canSplit={canSplit} onToggleSplit={() => setSplitRequested(!split)} />
+            </div>
+            <div className="flex min-h-0 min-w-0 flex-1">
+              <main
+                ref={regionRef.workspace}
+                tabIndex={-1}
+                id="workspace-buffer"
+                role="tabpanel"
+                aria-labelledby="workspace-tab-buffer"
+                hidden={promoted !== null && !split}
+                onFocusCapture={() => setFocusedRegion('workspace')}
+                className={cn('min-h-0 min-w-0 flex-1 flex-col overflow-hidden focus:outline-none', promoted !== null && !split ? 'hidden' : 'flex')}
+              >
+                <PanelErrorBoundary title="the buffer workspace">
+                  <Suspense fallback={<PanelSkeleton />}><BufferWorkspace /></Suspense>
+                </PanelErrorBoundary>
+              </main>
+              <div
+                ref={regionRef.dock}
+                tabIndex={-1}
+                hidden={promoted === null}
+                onFocusCapture={() => setFocusedRegion('dock')}
+                className={cn('min-h-0 min-w-0 focus:outline-none', promoted === null ? 'hidden' : 'flex', split ? 'shrink-0' : 'flex-1')}
+              >
+                <ToolDock width={toolWidth} split={split} onWidthChange={(width) => {
                   dockTouched.current = true
                   setDockWidth(width)
-                }}
-                onDismiss={() => setDockVisible(false)}
-              />
+                }} />
+              </div>
             </div>
-          ) : null}
-
-          {/* When the dock is hidden but tools are open, say so rather than
-              leaving the operator wondering where the panel went. */}
-          {!dockOpen && open.length > 0 ? (
-            <div className="absolute right-2 bottom-2 z-20">
-              <Button
-                size="xs"
-                icon={PanelRight}
-                onClick={() => setDockVisible(true)}
-                aria-keyshortcuts="Control+B"
-              >
-                Show {open.length} open {open.length === 1 ? 'tool' : 'tools'}
-              </Button>
-            </div>
-          ) : null}
+          </div>
         </div>
 
         <div

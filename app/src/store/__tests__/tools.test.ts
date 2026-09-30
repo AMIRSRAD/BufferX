@@ -30,15 +30,15 @@ describe('tools: dock behaviour (UX_SPEC 1.2)', () => {
     expect(tools().focused).toBe('mac')
   })
 
-  it('toggle dismisses the focused tool and opens anything else', () => {
+  it('rail reactivation preserves the open workspace', () => {
     tools().toggleTool('mac')
     expect(tools().open).toEqual(['mac'])
     expect(tools().focused).toBe('mac')
 
-    // Alt+4 Alt+4 -- the fast peek.
+    // Repeated navigation must not discard unfinished work.
     tools().toggleTool('mac')
-    expect(tools().open).toEqual([])
-    expect(tools().focused).toBeNull()
+    expect(tools().open).toEqual(['mac'])
+    expect(tools().focused).toBe('mac')
 
     // Open but not focused: bring it forward rather than dismiss it.
     tools().openTool('mac')

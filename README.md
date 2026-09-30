@@ -4,7 +4,22 @@ BufferX is a workbench for ISO 8583 buffers and the banking-adjacent operator ta
 them — MAC calculation, PIN blocks, key crypto, RSA, TLV, and IranSystem text conversion.
 
 It is built around one workflow: **paste a raw buffer, see it decoded, change something, build it
-back.** Everything else is a tool that hangs off that surface without covering it up.
+back.** Tools open in their own workspace tabs, and you can put one beside the buffer when you need
+to compare both at once.
+
+## Screenshots
+
+The workspace strip keeps every open tool one click away without squeezing them into a narrow stack.
+Choose **Split with buffer** to work on a tool and the message side by side. On smaller windows, the
+selected workspace gets the full area.
+
+![BufferX with the TLV workspace selected and eight tools available in the workspace strip](docs/images/workspace-focus.png)
+
+*Several tools remain available as tabs while the selected workspace uses the full working area.*
+
+![BufferX with the ISO 8583 buffer and TLV tool shown side by side](docs/images/workspace-split.png)
+
+*Split view keeps the message and its tool visible together.*
 
 > **Version 2.0 replaced the entire user interface.** The Qt/QML desktop app is gone, rewritten as a
 > React frontend in a Tauri shell. The tested C++ banking core was kept and made dependency-free, so

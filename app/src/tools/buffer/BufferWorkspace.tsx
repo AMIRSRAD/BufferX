@@ -1492,7 +1492,10 @@ export default function BufferWorkspace() {
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
+      // Kept mounted for drafts even when another workspace is selected.
+      if (rootRef.current?.closest('[hidden]')) return
       const target = event.target
+      if (target instanceof Element && target.closest('[aria-label="Tool workspace"]')) return
       if (target instanceof HTMLElement) {
         const tag = target.tagName
         if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return

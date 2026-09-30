@@ -4,11 +4,8 @@
  * Twelve destinations in five groups. Two properties matter more than the
  * pixels:
  *
- * 1. **Destinations, not commands.** Activating an entry opens or focuses that
- *    tool in the dock. It never replaces the workspace and never closes another
- *    tool — the mutual exclusion of the old `closeToolPanels()` is exactly what
- *    this shell exists to prevent. Re-activating the focused tool collapses it,
- *    so `Alt+4 Alt+4` is a fast peek.
+ * 1. Activating a destination selects its workspace. Open tools retain their
+ *    drafts until explicitly closed from the workspace tab strip.
  * 2. **State dots.** A tool that holds live state says so from the rail: teal =
  *    has a result, amber = the result is stale, red = last run failed, grey ring
  *    = a secret is resident in memory. The grey ring is how an operator knows a
@@ -165,7 +162,6 @@ const DOT_WORD: Record<'error' | 'stale' | 'result', string> = {
 
 export function Rail({ labeled, onSelectWorkspace, onToggleLabels, onNavigate, className }: RailProps) {
   const open = useTools((state) => state.open)
-  const focused = useTools((state) => state.focused)
   const toggleTool = useTools((state) => state.toggleTool)
   const unpromote = useTools((state) => state.unpromote)
   const promoted = useTools((state) => state.promoted)
@@ -237,7 +233,7 @@ export function Rail({ labeled, onSelectWorkspace, onToggleLabels, onNavigate, c
             const isCurrent =
               entry.kind === 'workspace'
                 ? promoted === null
-                : entry.kind === 'tool' && (focused === entry.id || promoted === entry.id)
+                : entry.kind === 'tool' && promoted === entry.id
 
             const status = statuses[entry.id] ?? EMPTY_TOOL_STATUS
             const tone = entry.kind === 'tool' ? toneFor(status, erroredSources.has(entry.title.toLowerCase())) : null

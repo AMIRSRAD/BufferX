@@ -131,8 +131,8 @@ export function CommandPalette({ open, onOpenChange, handlers }: CommandPaletteP
       { id: 'toggle-include-header', label: 'Toggle include header on build', group: 'Packager', run: dispatch('toggle-include-header') },
 
       // View and app
-      { id: 'toggle-dock', label: 'Toggle tool dock', group: 'View', shortcut: 'Ctrl+B', run: handlers.toggleDock },
-      { id: 'promote-tool', label: 'Promote tool to a workspace tab', group: 'View', shortcut: 'Ctrl+Shift+\\', run: handlers.promoteFocusedTool },
+      { id: 'toggle-dock', label: 'Switch between buffer and tool', group: 'View', shortcut: 'Ctrl+B', run: handlers.toggleDock },
+      { id: 'promote-tool', label: 'Toggle buffer and tool split view', group: 'View', shortcut: 'Ctrl+Shift+\\', run: handlers.promoteFocusedTool },
       { id: 'toggle-problems', label: 'Toggle Problems drawer', group: 'View', shortcut: 'Ctrl+`', run: handlers.toggleProblems },
       { id: 'toggle-rail-labels', label: 'Toggle rail labels', group: 'View', run: dispatch('toggle-rail-labels') },
       { id: 'toggle-theme', label: 'Toggle theme', group: 'View', run: dispatch('toggle-theme') },

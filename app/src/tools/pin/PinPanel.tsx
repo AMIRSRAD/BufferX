@@ -25,7 +25,6 @@ import {
   type ShellActionDetail,
   type ShellCommandDetail,
 } from '@/shell/useShortcuts'
-import { useTools } from '@/store/tools'
 import { Ibm3624Tab } from './Ibm3624Tab'
 import { PinBlocksTab } from './PinBlocksTab'
 import { TranslateTab } from './TranslateTab'
@@ -75,7 +74,6 @@ export default function PinPanel() {
   const translateRunner = useRunner(translate.version)
 
   const actionsRef = useRef<TabActions | null>(null)
-  const promoted = useTools((store) => store.promoted)
 
   /** `PAN from Visa PVV`, shown as a chip next to the carry-over trigger. */
   const [carriedFrom, setCarriedFrom] = useState<Partial<Record<SubTab, string>>>({})
@@ -216,7 +214,7 @@ export default function PinPanel() {
       const detail = (event as CustomEvent<ShellActionDetail>).detail
       if (!detail) return
       const mine =
-        detail.tool === 'pin' || (promoted === 'pin' && detail.region === 'workspace')
+        detail.tool === 'pin'
       if (!mine) return
       const actions = actionsRef.current
       if (!actions) return
@@ -225,7 +223,7 @@ export default function PinPanel() {
     }
     document.addEventListener(SHELL_ACTION_EVENT, onAction)
     return () => document.removeEventListener(SHELL_ACTION_EVENT, onAction)
-  }, [promoted])
+  }, [])
 
   /* ── Render ───────────────────────────────────────────────────────────── */
 

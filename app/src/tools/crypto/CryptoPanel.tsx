@@ -40,7 +40,6 @@ import type { ShellActionDetail, ShellCommandDetail } from '@/shell/useShortcuts
 import { reportToolStatus } from '@/shell/toolStatus'
 import { useBuffers, type FieldRow } from '@/store/buffers'
 import { useProblems } from '@/store/problems'
-import { useTools } from '@/store/tools'
 import { cn } from '@/lib/cn'
 import {
   CRYPTO_ALGORITHMS,
@@ -147,7 +146,6 @@ export default function CryptoPanel() {
   const updateBuffer = useBuffers((state) => state.update)
   const newTab = useBuffers((state) => state.newTab)
   const addProblem = useProblems((state) => state.add)
-  const promotedTool = useTools((state) => state.promoted)
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeId),
@@ -325,15 +323,14 @@ export default function CryptoPanel() {
     const onAction = (event: Event) => {
       const detail = (event as CustomEvent<ShellActionDetail>).detail
       if (!detail) return
-      // In the dock the shell names the focused tool; promoted to a workspace
-      // tab it names the region instead, and this panel *is* the region.
-      const mine = detail.tool === TOOL_ID || (detail.region === 'workspace' && promotedTool === TOOL_ID)
+      // The shell names the active tool in focused and split layouts.
+      const mine = detail.tool === TOOL_ID
       if (!mine) return
       runRef.current?.(detail.kind === 'primary' ? 'encrypt' : 'decrypt')
     }
     document.addEventListener(SHELL_ACTION_EVENT, onAction)
     return () => document.removeEventListener(SHELL_ACTION_EVENT, onAction)
-  }, [promotedTool])
+  }, [])
 
   useEffect(() => {
     const onCommand = (event: Event) => {

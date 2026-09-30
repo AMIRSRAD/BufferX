@@ -53,6 +53,7 @@ function visibleTabCount(mode: LayoutMode): number {
 
 export interface CommandBarProps {
   onOpenPalette(): void
+  onCreateBuffer?(): void
   /** Routed through `AppShell` so a dirty tab always raises the same prompt. */
   onRequestCloseBuffer(id: string): void
   /** Slot for the compact-layout rail menu button. */
@@ -60,7 +61,7 @@ export interface CommandBarProps {
   className?: string
 }
 
-export function CommandBar({ onOpenPalette, onRequestCloseBuffer, leading, className }: CommandBarProps) {
+export function CommandBar({ onOpenPalette, onCreateBuffer, onRequestCloseBuffer, leading, className }: CommandBarProps) {
   const { mode } = useLayout()
   const tabs = useBuffers((state) => state.tabs)
   const activeId = useBuffers((state) => state.activeId)
@@ -162,7 +163,7 @@ export function CommandBar({ onOpenPalette, onRequestCloseBuffer, leading, class
             size="xs"
             variant="ghost"
             tooltip={false}
-            onClick={() => newTab()}
+            onClick={() => { newTab(); onCreateBuffer?.() }}
           />
         </Tooltip>
       </div>

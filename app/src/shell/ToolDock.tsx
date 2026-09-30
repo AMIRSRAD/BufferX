@@ -1,24 +1,5 @@
-/**
- * The tool dock (UX_SPEC 1.1, 1.5, 3.0).
- *
- * A right-hand column, 380–640px, holding a vertical accordion of open tools.
- * Its defining property is what it does *not* do: opening a tool never closes
- * another and never occludes the workspace, so an operator can read the field
- * table while running MAC and PIN at once (tenet 1).
- *
- * The dock supplies the frame — title, buffer scope, collapse, promote, close —
- * and nothing else. A panel renders only its own body (the tool-panel contract),
- * so muscle memory transfers between tools and no tool can invent its own
- * chrome.
- *
- * At `medium` and `compact` widths the column becomes an overlay sheet over the
- * right edge of the workspace, dismissed with `Esc` (UX_SPEC 1.5).
- */
-
-import { Suspense, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ChevronDown, ChevronRight, Maximize2, X } from 'lucide-react'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { IconButton } from '@/components/ui/IconButton'
+/** Stable panel host: changing workspaces or split mode never remounts a tool. */
+import { Suspense, useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { hostCapabilities } from '@/engine/client'
@@ -28,199 +9,47 @@ import { useBuffers } from '@/store/buffers'
 import { useTools } from '@/store/tools'
 import { getTool, type ToolDefinition } from '@/tools/registry'
 import { PanelErrorBoundary } from './ErrorBoundary'
-import { DOCK_MAX_WIDTH, DOCK_MIN_WIDTH, dockIsOverlay, useLayout } from './layout'
-import { clearToolStatus } from './toolStatus'
-import { formatShortcut } from './useShortcuts'
+import { DOCK_MAX_WIDTH, DOCK_MIN_WIDTH } from './layout'
 
 const RESIZE_STEP = 16
 const RESIZE_STEP_LARGE = 64
 
 export interface ToolDockProps {
   width: number
+  split: boolean
   onWidthChange(width: number): void
-  /** Dismisses the dock. Bound to `Esc` while the dock is an overlay. */
-  onDismiss(): void
-  className?: string
 }
 
-export function ToolDock({ width, onWidthChange, onDismiss, className }: ToolDockProps) {
-  const { mode } = useLayout()
+export function ToolDock({ width, split, onWidthChange }: ToolDockProps) {
   const open = useTools((state) => state.open)
-  const focused = useTools((state) => state.focused)
-  const promoted = useTools((state) => state.promoted)
-
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const overlay = dockIsOverlay(mode)
-  const fullBleed = mode === 'compact'
-
-  useEffect(() => {
-    if (!overlay) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onDismiss()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [overlay, onDismiss])
-
-  const tools = open
-    .map((id) => getTool(id))
-    .filter((tool): tool is ToolDefinition => tool !== undefined)
-    // A promoted tool lives in the workspace, not in the accordion.
-    .filter((tool) => tool.id !== promoted)
-
-  return (
-    <aside
-      aria-label="Tools"
-      data-overlay={overlay ? 'true' : 'false'}
-      style={fullBleed ? undefined : { width: `${width}px` }}
-      className={cn(
-        // `relative` because the resizer is placed on the dock's left edge.
-        // Overlay placement belongs to `AppShell`, which owns the stacking box.
-        'relative flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-surface-1',
-        overlay && 'shadow-e3',
-        fullBleed && 'w-full border-l-0',
-        className,
-      )}
-    >
-      {!fullBleed ? (
-        <DockResizer width={width} onWidthChange={onWidthChange} />
-      ) : null}
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {tools.length === 0 ? (
-          <div className="p-panel">
-            <EmptyState
-              title="No tools open"
-              description="Pick a destination from the rail, or search everything with the command palette."
-              hint={<span className="font-mono text-mono-xs">{formatShortcut('Ctrl+K')}</span>}
-            />
-          </div>
-        ) : (
-          tools.map((tool) => (
-            <DockSection
-              key={tool.id}
-              tool={tool}
-              focused={focused === tool.id}
-              collapsed={collapsed[tool.id] === true}
-              onToggleCollapse={() =>
-                setCollapsed((current) => ({ ...current, [tool.id]: !(current[tool.id] === true) }))
-              }
-            />
-          ))
-        )}
-      </div>
-    </aside>
-  )
-}
-
-/* ── Section ─────────────────────────────────────────────────────────────── */
-
-function DockSection({
-  tool,
-  focused,
-  collapsed,
-  onToggleCollapse,
-}: {
-  tool: ToolDefinition
-  focused: boolean
-  collapsed: boolean
-  onToggleCollapse(): void
-}) {
-  const focusTool = useTools((state) => state.focusTool)
-  const closeTool = useTools((state) => state.closeTool)
-  const promote = useTools((state) => state.promote)
+  const active = useTools((state) => state.promoted)
   const tabs = useBuffers((state) => state.tabs)
   const activeId = useBuffers((state) => state.activeId)
   const bufferName = tabs.find((tab) => tab.id === activeId)?.name
-
-  const capabilities = hostCapabilities()
-  const gated = tool.requires !== undefined && capabilities[tool.requires] !== true
-
-  const bodyId = `dock-body-${tool.id}`
-  const headerId = `dock-header-${tool.id}`
-  const Icon = tool.icon
-
+  const tools = open.map(getTool).filter((tool): tool is ToolDefinition => tool !== undefined)
   return (
-    <section
-      aria-labelledby={headerId}
-      data-tool-id={tool.id}
-      onFocusCapture={() => focusTool(tool.id)}
-      className={cn(
-        'flex min-h-0 shrink-0 flex-col border-b border-border',
-        !collapsed && 'flex-1',
-        focused && 'bg-surface-1',
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-8 shrink-0 items-center gap-1 bg-surface-2 px-1.5',
-          focused && 'border-l-2 border-l-accent pl-1',
-        )}
-      >
-        <button
-          type="button"
-          id={headerId}
-          aria-expanded={!collapsed}
-          aria-controls={bodyId}
-          onClick={onToggleCollapse}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-sm text-text"
-        >
-          {collapsed ? (
-            <ChevronRight size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden="true" />
-          ) : (
-            <ChevronDown size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden="true" />
-          )}
-          <Icon size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden="true" className="shrink-0" />
-          <span className="shrink-0 font-medium">{tool.title}</span>
-          {bufferName ? (
-            <span className="min-w-0 truncate font-mono text-mono-xs text-text-tertiary">
-              · {bufferName}
-            </span>
-          ) : null}
-        </button>
-
-        <IconButton
-          icon={Maximize2}
-          label={`Promote ${tool.title} to a workspace tab (${formatShortcut('Ctrl+Shift+\\')})`}
-          size="xs"
-          variant="ghost"
-          onClick={() => promote(tool.id)}
-        />
-        <IconButton
-          icon={X}
-          label={`Close ${tool.title}`}
-          size="xs"
-          variant="ghost"
-          onClick={() => {
-            // Closing wipes the tool's reported state, including its secret
-            // marker (UX_SPEC 3.0, 5.5 rule 5).
-            clearToolStatus(tool.id)
-            closeTool(tool.id)
-          }}
-        />
-      </div>
-
-      <div
-        id={bodyId}
-        role="region"
-        aria-labelledby={headerId}
-        hidden={collapsed}
-        className={cn('min-h-0 flex-1 overflow-y-auto', collapsed && 'hidden')}
-      >
-        {gated && tool.requires ? (
-          <div className="p-panel pb-0">
-            <InlineAlert tone="info" title={`${tool.title} is limited in this host`}>
-              {capabilityHint(tool.requires)}
-            </InlineAlert>
-          </div>
-        ) : null}
-        <PanelErrorBoundary title={tool.title}>
-          <Suspense fallback={<PanelSkeleton />}>
-            <tool.Panel />
-          </Suspense>
-        </PanelErrorBoundary>
-      </div>
-    </section>
+    <aside aria-label="Tool workspace" style={split ? { width } : undefined}
+      className={cn('relative flex h-full min-h-0 min-w-0 flex-col bg-surface-1', split ? 'shrink-0 border-l border-border' : 'flex-1')}>
+      {split && <DockResizer width={width} onWidthChange={onWidthChange} />}
+      {tools.map((tool) => {
+        const gated = tool.requires && !hostCapabilities()[tool.requires]
+        return (
+          <section key={tool.id} id={`workspace-${tool.id}`} role="tabpanel" aria-labelledby={`workspace-tab-${tool.id}`}
+            hidden={active !== tool.id} data-tool-id={tool.id}
+            className={cn('@container min-h-0 min-w-0 flex-1 flex-col', active === tool.id ? 'flex' : 'hidden')}>
+            <div className="flex h-9 shrink-0 items-center gap-2 border-b border-border-subtle px-3 text-text-secondary">
+              <tool.icon size={14} aria-hidden="true" />
+              <span className="text-sm font-medium text-text">{tool.title}</span>
+              <span className="ml-auto truncate text-2xs">Buffer: <span className="font-mono">{bufferName ?? 'None'}</span></span>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto">
+              {gated && tool.requires && <div className="p-panel pb-0"><InlineAlert tone="info" title={`${tool.title} is limited in this host`}>{capabilityHint(tool.requires)}</InlineAlert></div>}
+              <PanelErrorBoundary title={tool.title}><Suspense fallback={<PanelSkeleton />}><tool.Panel /></Suspense></PanelErrorBoundary>
+            </div>
+          </section>
+        )
+      })}
+    </aside>
   )
 }
 

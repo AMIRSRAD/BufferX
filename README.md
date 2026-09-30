@@ -13,9 +13,9 @@ The workspace strip keeps every open tool one click away without squeezing them 
 Choose **Split with buffer** to work on a tool and the message side by side. On smaller windows, the
 selected workspace gets the full area.
 
-![BufferX with the TLV workspace selected and eight tools available in the workspace strip](docs/images/workspace-focus.png)
+![BufferX showing an ISO 8583 network management message and its field table](docs/images/workspace-focus.png)
 
-*Several tools remain available as tabs while the selected workspace uses the full working area.*
+*An 0800 network management message with its MTI, bitmap, transmission time, trace number and network code visible in the buffer workspace.*
 
 ![BufferX with the ISO 8583 buffer and TLV tool shown side by side](docs/images/workspace-split.png)
 

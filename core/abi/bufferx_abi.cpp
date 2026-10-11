@@ -25,6 +25,7 @@
 
 #include "bufferx/BufferXCore.h"
 #include "bufferx/TextCodec.h"
+#include "bufferx/Ltv.h"
 #include "bufferx/XmlLite.h"
 
 #include <algorithm>
@@ -1218,6 +1219,46 @@ json::Value opTlvParse(bufferx_session&, const json::Value& args) {
     return data;
 }
 
+ltvtool::Options readLtvOptions(const json::Value& args) {
+    const int lengthBytes = optionalInt(args, "lengthBytes", 2);
+    const int tagBytes = optionalInt(args, "tagBytes", 1);
+    if (lengthBytes < 1 || lengthBytes > 4 || tagBytes < 1 || tagBytes > 4) {
+        badArgument("width", "Length and tag widths must be between 1 and 4 bytes.");
+    }
+    return {static_cast<unsigned>(lengthBytes), static_cast<unsigned>(tagBytes), optionalBool(args, "littleEndian", false), optionalBool(args, "lengthIncludesHeader", false)};
+}
+
+json::Value opLtvParse(bufferx_session&, const json::Value& args) {
+    const auto parsed = ltvtool::parse(payloadBytes(args), readLtvOptions(args));
+    if (!parsed.ok) throw AbiError(ErrorCode::DecodeFailed, parsed.error);
+    json::Value nodes = json::Value::array();
+    for (const auto& record : parsed.records) {
+        json::Value node = json::Value::object();
+        node.set("tag", json::Value(tlvtool::toHex(record.tag, ' ')));
+        node.set("length", json::Value(static_cast<long long>(record.value.size())));
+        node.set("value", json::Value(tlvtool::toHex(record.value, ' ')));
+        node.set("ascii", json::Value(tlvtool::toAsciiDebug(record.value)));
+        node.set("composite", json::Value(false));
+        node.set("children", json::Value::array());
+        node.set("offset", json::Value(static_cast<long long>(record.offset)));
+        nodes.push(node);
+    }
+    json::Value data = json::Value::object();
+    data.set("nodes", nodes);
+    return data;
+}
+
+json::Value opLtvBuild(bufferx_session&, const json::Value& args) {
+    const auto tag = requiredHexBytes(args, "tagHex");
+    const auto payload = optionalString(args, "payload");
+    const auto bytes = optionalBool(args, "valueIsHex", true) ? hexBytes(payload, "payload") : stringBytes(payload);
+    const auto result = ltvtool::build(tag, bytes, readLtvOptions(args));
+    if (!result.ok) throw AbiError(ErrorCode::EncodeFailed, result.error);
+    json::Value data = json::Value::object();
+    data.set("hex", json::Value(toHex(result.bytes, true)));
+    return data;
+}
+
 json::Value opTlvBuild(bufferx_session&, const json::Value& args) {
     const std::vector<unsigned char> tag = requiredHexBytes(args, "tagHex");
     if (tag.empty()) {
@@ -1570,6 +1611,8 @@ const std::unordered_map<std::string, Handler>& handlers() {
         {"rsa.decrypt",         &opRsaDecrypt},
 
         {"tlv.parse",           &opTlvParse},
+        {"ltv.parse",           &opLtvParse},
+        {"ltv.build",           &opLtvBuild},
         {"tlv.build",           &opTlvBuild},
         {"tlv.validate",        &opTlvValidate},
         {"tlv.toXml",           &opTlvToXml},

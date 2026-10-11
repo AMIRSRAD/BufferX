@@ -51,6 +51,8 @@ import { FieldBridge } from './FieldBridge'
 import { TlvFlatTable } from './TlvFlatTable'
 import { TlvTreeView } from './TlvTreeView'
 import { XmlEditor } from './XmlEditor'
+import { LtvPanel } from './LtvPanel'
+import { StructureInspector } from './StructureInspector'
 import { DICTIONARY_SOURCES } from './tags'
 import { useDeferredBusy } from './useDeferredBusy'
 import {
@@ -71,7 +73,7 @@ import {
 } from './model'
 
 type Mode = 'parse' | 'build' | 'xml'
-type StructureView = 'tree' | 'flat'
+type StructureView = 'inspect' | 'tree' | 'flat'
 type Busy = null | 'parse' | 'validate' | 'build' | 'toXml' | 'fromXml' | 'reencode'
 
 interface ToolError {
@@ -98,6 +100,7 @@ const VALUE_MODE_OPTIONS = [
 ]
 
 const VIEW_OPTIONS = [
+  { value: 'inspect', label: 'Visual' },
   { value: 'tree', label: 'Tree' },
   { value: 'flat', label: 'Flat' },
 ]
@@ -105,6 +108,15 @@ const VIEW_OPTIONS = [
 const XML_PLACEHOLDER = '<Tlv>\n  <Node tag="9F02" value="000000001000" />\n</Tlv>'
 
 export default function TlvPanel() {
+  const [format, setFormat] = useState('tlv')
+  return <div className="flex min-h-0 flex-1 flex-col">
+    <div className="px-panel pt-panel"><SegmentedControl aria-label="Record format" value={format} onValueChange={setFormat} options={[{ value: 'tlv', label: 'BER-TLV' }, { value: 'ltv', label: 'LTV' }]} size="sm" /></div>
+    <div className={format === 'tlv' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}><BerTlvPanel active={format === 'tlv'} /></div>
+    <div className={format === 'ltv' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}><LtvPanel active={format === 'ltv'} /></div>
+  </div>
+}
+
+function BerTlvPanel({ active }: { active: boolean }) {
   const promoted = useTools((state) => state.promoted) === 'tlv'
   const activeBufferName = useBuffers((state) => {
     const tab = state.tabs.find((candidate) => candidate.id === state.activeId)
@@ -126,9 +138,10 @@ export default function TlvPanel() {
 
   /* ── Parse state ────────────────────────────────────────────────────────── */
   const [nodes, setNodes] = useState<TlvNode[] | null>(null)
+  const [parsedHex, setParsedHex] = useState('')
   const [generation, setGeneration] = useState(0)
   const [treeDirty, setTreeDirty] = useState(false)
-  const [view, setView] = useState<StructureView>('tree')
+  const [view, setView] = useState<StructureView>('inspect')
   const [validation, setValidation] = useState<TlvValidateResponse | null>(null)
 
   /* ── Build state ────────────────────────────────────────────────────────── */
@@ -147,6 +160,7 @@ export default function TlvPanel() {
 
   /* ── Status reporting (rail dots, UX_SPEC 1.2) ──────────────────────────── */
   useEffect(() => {
+    if (!active) return
     reportToolStatus('tlv', {
       result: encoded !== '' || nodes !== null,
       stale,
@@ -154,7 +168,7 @@ export default function TlvPanel() {
       // The TLV tool never holds a key, a PIN or a PAN of its own.
       secret: false,
     })
-  }, [encoded, nodes, stale, error])
+  }, [active, encoded, nodes, stale, error])
 
   /* ── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -235,6 +249,7 @@ export default function TlvPanel() {
     setError(null)
     setValidation(null)
     setNodes(normalizeParse(result.data))
+    setParsedHex(payloadToHex(payload, inputHex))
     setGeneration((current) => current + 1)
     setTreeDirty(false)
     setEncoded(payloadToHex(payload, inputHex))
@@ -393,6 +408,7 @@ export default function TlvPanel() {
 
     setError(null)
     setNodes(normalizeParse(reparsed.data))
+    setParsedHex(hex)
     setGeneration((current) => current + 1)
     setTreeDirty(false)
     setEncoded(hex)
@@ -660,6 +676,8 @@ export default function TlvPanel() {
                   </div>
                 }
               />
+            ) : view === 'inspect' ? (
+              <StructureInspector nodes={nodes} sourceHex={treeDirty ? '' : parsedHex} />
             ) : view === 'tree' ? (
               <TlvTreeView
                 nodes={nodes}

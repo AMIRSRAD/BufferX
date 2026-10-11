@@ -98,7 +98,7 @@ describe('tools: dock behaviour (UX_SPEC 1.2)', () => {
 })
 
 describe('tools: persistence allowlist (UX_SPEC 5.5)', () => {
-  it('persists the open list and nothing else', () => {
+  it('persists workspace layout without panel drafts', () => {
     tools().openTool('mac')
     tools().openTool('pin')
     tools().promote('pin')
@@ -108,11 +108,11 @@ describe('tools: persistence allowlist (UX_SPEC 5.5)', () => {
 
     const parsed = JSON.parse(raw ?? '{}') as { v: number; data: Record<string, unknown> }
     expect(Object.keys(parsed.data)).toEqual([...TOOLS_PERSISTED_KEYS])
-    expect(parsed.data).toEqual({ open: ['mac', 'pin'] })
+    expect(parsed.data).toEqual({ open: ['mac', 'pin'], promoted: 'pin', splitTools: [], dockWidth: null })
 
     // Session-only state must not be written.
     expect(raw).not.toContain('focused')
-    expect(raw).not.toContain('promoted')
+    expect(raw).not.toContain('payload')
   })
 
   it('writes only its own storage key', () => {
@@ -146,6 +146,17 @@ describe('tools: hydration', () => {
     expect(state.focused).toBe('mac')
     // Never restored from storage.
     expect(state.promoted).toBeNull()
+  })
+
+  it('restores the selected workspace, split preferences and splitter width', async () => {
+    localStorage.setItem(STORAGE_KEYS.tools, JSON.stringify({ v: 1, data: { open: ['mac', 'pin'], promoted: 'pin', splitTools: ['pin', 'pin', 42], dockWidth: 520 } }))
+    const { useTools: hydrated } = await import('@/store/tools')
+    expect(hydrated.getState().promoted).toBe('pin')
+    expect(hydrated.getState().splitTools).toEqual(['pin'])
+    expect(hydrated.getState().dockWidth).toBe(520)
+    hydrated.getState().closeTool('pin')
+    hydrated.getState().openTool('pin')
+    expect(hydrated.getState().splitTools).toContain('pin')
   })
 
   it('discards junk entries and duplicates rather than trusting storage', async () => {

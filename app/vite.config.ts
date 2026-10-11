@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => ({
   // Tauri expects a fixed port and surfaces build errors rather than masking them.
   clearScreen: false,
   server: {
+    // The builder uses the same source XML embedded into the native engine.
+    fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
     port: 5173,
     strictPort: true,
     host: '127.0.0.1',

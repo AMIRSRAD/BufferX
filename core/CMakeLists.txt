@@ -11,6 +11,7 @@ add_library(BufferXCore STATIC
     src/IranSystem.cpp
     src/Iso8583.cpp
     src/Mac.cpp
+    src/Ltv.cpp
     src/Packager.cpp
     src/PackagerLoader.cpp
     src/PinBlock.cpp
@@ -49,6 +50,9 @@ endif()
 # --- Verification executables ------------------------------------------------
 
 if(BUFFERX_BUILD_TESTS)
+    add_executable(BufferXLtvTest tests/LtvTest.cpp)
+    target_link_libraries(BufferXLtvTest PRIVATE BufferXCore)
+    add_test(NAME Ltv COMMAND BufferXLtvTest)
     # Proves the de-Qt'd IranSystem converter still produces the byte sequences
     # the Qt test suite asserted.
     add_executable(BufferXIranSystemPortTest tests/IranSystemPortTest.cpp)

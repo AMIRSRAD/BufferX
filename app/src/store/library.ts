@@ -5,7 +5,7 @@
  * "reversal with F90" — that an operator replays often.
  *
  * The content of those messages lives in the operator's own `.bxb` files, in a
- * folder they choose. This store keeps only the folder path and per-file
+ * portable default folder or an override. This store keeps only the override and per-file
  * annotations (a label and a note). That split is deliberate and is the whole
  * security design of the feature: a saved buffer carries a PAN, track 2 data
  * and a PIN block, and application storage is the wrong place for those. The
@@ -34,7 +34,7 @@ export interface LibraryNote {
 }
 
 export interface LibraryState {
-  /** Folder the library reads. `null` until the operator picks one. */
+  /** Folder override. `null` uses saved-buffers beside the executable. */
   folder: string | null
   /** Annotations keyed by path. Entries with no annotation are absent. */
   notes: Record<string, LibraryNote>

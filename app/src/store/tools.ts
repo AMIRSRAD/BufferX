@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import { STORAGE_KEYS, persistence } from './persist'
 
-/** Open workspace identities only are persisted. Panel data stays in memory.
+/** Workspace identities and layout preferences are persisted. Panel data stays in memory.
  * `promoted` is the active tool workspace; null selects the buffer.
  */
 
 /** Rail destinations that open as dock tools (UX_SPEC 1.2). */
 export const TOOL_IDS = [
+  'packager',
+  'json',
   'tlv',
   'iransystem',
   'mac',
@@ -27,6 +29,10 @@ export interface ToolsState {
   focused: string | null
   /** The tool promoted to a full workspace tab via `Ctrl+Shift+\`, if any. */
   promoted: string | null
+  splitTools: string[]
+  dockWidth: number | null
+  setSplit(id: string, split: boolean): void
+  setDockWidth(width: number): void
 
   /** Opens (if needed) and focuses. This is what a rail entry does. */
   openTool(id: string): void
@@ -42,7 +48,7 @@ export interface ToolsState {
 }
 
 /** The only key this store may write. `focused` and `promoted` are session-only. */
-export const TOOLS_PERSISTED_KEYS = ['open'] as const
+export const TOOLS_PERSISTED_KEYS = ['open', 'promoted', 'splitTools', 'dockWidth'] as const
 
 export type ToolsPersistedKey = (typeof TOOLS_PERSISTED_KEYS)[number]
 
@@ -60,7 +66,12 @@ const persisted = persistence<ToolsState>()({
       seen.add(entry)
       open.push(entry)
     }
-    return { open }
+    return {
+      open,
+      promoted: typeof raw.promoted === 'string' && open.includes(raw.promoted) ? raw.promoted : null,
+      splitTools: Array.isArray(raw.splitTools) ? [...new Set(raw.splitTools.filter((id): id is string => typeof id === 'string'))] : [],
+      dockWidth: typeof raw.dockWidth === 'number' && Number.isFinite(raw.dockWidth) ? Math.max(380, Math.min(1200, raw.dockWidth)) : null,
+    }
   },
 })
 
@@ -71,8 +82,14 @@ export const useTools = create<ToolsState>()((set, get) => ({
   open: initialOpen,
   // Restoring focus to the first restored tool keeps the dock keyboard-navigable
   // immediately after a reload.
-  focused: initialOpen[0] ?? null,
-  promoted: null,
+  focused: stored.promoted ?? initialOpen[0] ?? null,
+  promoted: stored.promoted ?? null,
+  splitTools: stored.splitTools ?? [],
+  dockWidth: stored.dockWidth ?? null,
+  setSplit(id, split) {
+    set(({ splitTools }) => ({ splitTools: split ? [...new Set([...splitTools, id])] : splitTools.filter((entry) => entry !== id) }))
+  },
+  setDockWidth(width) { set({ dockWidth: Math.max(380, Math.min(1200, width)) }) },
 
   openTool(id) {
     const { open } = get()
@@ -113,7 +130,7 @@ export const useTools = create<ToolsState>()((set, get) => ({
 }))
 
 useTools.subscribe((state, previous) => {
-  if (state.open !== previous.open) persisted.save(state)
+  if (TOOLS_PERSISTED_KEYS.some((key) => state[key] !== previous[key])) persisted.save(state)
 })
 
 /** Exposed for tests and for a "reset layout" command. */

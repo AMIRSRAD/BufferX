@@ -1,8 +1,8 @@
 /**
  * Saved buffers — a curated library of reusable test messages.
  *
- * The library is a folder of `.bxb` documents the operator chooses. BufferX
- * remembers the folder and per-file annotations; the messages themselves stay
+ * The library defaults to saved-buffers beside the executable. BufferX
+ * remembers folder overrides and per-file annotations; the messages themselves stay
  * in those files. That is the point: a saved buffer carries a PAN, track 2 data
  * and a PIN block, and the operator's own filesystem is where retention and
  * encryption are already handled. See `store/library.ts`.
@@ -46,6 +46,7 @@ import {
 } from '@/tools/buffer/model'
 import {
   canUseLibrary,
+  defaultLibraryFolder,
   joinPath,
   listLibrary,
   pickLibraryFolder,
@@ -83,7 +84,9 @@ function formatSize(bytes: number): string {
 export default function LibraryPanel() {
   const available = canUseLibrary()
 
-  const folder = useLibrary((state) => state.folder)
+  const configuredFolder = useLibrary((state) => state.folder)
+  const [defaultFolder, setDefaultFolder] = useState<string | null>(null)
+  const folder = configuredFolder ?? defaultFolder
   const notes = useLibrary((state) => state.notes)
   const setFolder = useLibrary((state) => state.setFolder)
   const annotate = useLibrary((state) => state.annotate)
@@ -102,6 +105,17 @@ export default function LibraryPanel() {
   const [renaming, setRenaming] = useState<string | null>(null)
   const [draftLabel, setDraftLabel] = useState('')
   const [saveName, setSaveName] = useState('')
+
+  useEffect(() => {
+    if (!available || folder) return
+    let cancelled = false
+    void defaultLibraryFolder().then((path) => {
+      if (!cancelled) setDefaultFolder(path)
+    }).catch((cause: unknown) => {
+      if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause))
+    })
+    return () => { cancelled = true }
+  }, [available, folder, setFolder])
 
   const refresh = useCallback(async () => {
     if (!folder || !available) return
@@ -238,8 +252,8 @@ export default function LibraryPanel() {
       <div className="p-panel">
         <EmptyState
           icon={FolderOpen}
-          title="Choose a folder for saved buffers"
-          description="Pick a folder to keep reusable test messages in. BufferX remembers where it is and what you call each message; the messages themselves stay in your files, so card data never enters application storage."
+          title={error ? 'Saved buffer folder unavailable' : 'Preparing saved buffers'}
+          description={error ?? 'Creating saved-buffers beside the executable. You can change this folder in Settings → Buffers and session.'}
           action={
             <Button variant="primary" icon={FolderOpen} onClick={choose}>
               Choose folder…

@@ -29,6 +29,7 @@ selected workspace gets the full area.
 
 **Buffer workspace**
 - Paste a buffer as text or hex; decode it against any of 32 packager definitions
+- Build or clone packagers in the UI, edit field definitions, and import/export XML
 - Field table with inline editing, per-field hex view, filtering, and add/remove field
 - Hex view with per-field colour coding — hover a field to see its bytes, hover bytes to find the field
 - ASCII and binary length headers, with auto-detection
@@ -47,9 +48,14 @@ selected workspace gets the full area.
 
 **Analysis and utilities**
 - TLV parse (tree and flat views), build primitive and constructed nodes, validate, XML round trip
+- Visual TLV byte inspector and LTV with configurable tag/length widths, byte order, and length scope
+- JSON inspector with exact error locations, searchable tree, source navigation, and lossless formatting
 - IranSystem conversion in both the normalized and ATM-engine (AlmasPlus-compatible) profiles
 - Toolbox: BCD, XOR, Base64, MD5/SHA hashes, Luhn, DES parity, random keys, KCV, EBCDIC
 - ISO host tester over raw TCP with none/ASCII/binary framing *(desktop only)*
+
+Split-with-buffer choices and dock width survive reopening. The saved-buffer library defaults to
+`saved-buffers` beside the desktop executable; Settings → Buffers offers a folder override.
 
 **A `Legacy ATM Engine` mode** (off by default) switches the codec to engine-compatible BCD, binary
 bitmaps, variable-length prefixes, framing, and partial-MAC field scope for legacy hosts.
@@ -81,6 +87,9 @@ current host cannot do is disabled with an explanation rather than hidden.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ENGINE_CONTRACT.md](docs/ENGINE_CONTRACT.md),
 [docs/UX_SPEC.md](docs/UX_SPEC.md), and [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
+
+For the packager builder, TLV/LTV options, JSON inspection, network behavior, and library location,
+see the [tools guide](docs/TOOLS_GUIDE.md).
 
 ## Build
 

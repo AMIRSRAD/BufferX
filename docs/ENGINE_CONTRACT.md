@@ -2220,7 +2220,7 @@ Rules — binding on both sides of the boundary:
 ## Appendix A — As-built operation index
 
 Generated from the handler registration table in `core/abi/bufferx_abi.cpp` (the `handlers()`
-function). This is the real, complete op catalogue — 40 operations across 9 namespaces — kept in
+function). This is the real, complete op catalogue — 42 operations across 10 namespaces — kept in
 sync with the source rather than maintained by hand as prose. Every op takes the standard
 envelope (`{v, op, args}` in, `{ok, data}` / `{ok:false, error}` out) described in §1 above.
 
@@ -2296,6 +2296,17 @@ says so instead of guessing. For the exact shape of any op, the single source of
 | `tlv.toXml` | payload, inputHex | xml |
 | `tlv.fromXml` | xml | hex |
 
+### `ltv.*` — fixed-width Length–Tag–Value (2 ops)
+
+Both operations accept `lengthBytes` (1–4, default 2), `tagBytes` (1–4, default 1),
+`littleEndian` (default false), and `lengthIncludesHeader` (default false). Tags are opaque bytes;
+records are sequential and do not imply nesting. Header-inclusive lengths count L + T + V.
+
+| Op | Args | Result / notes |
+|---|---|---|
+| `ltv.parse` | payload, inputHex, width/order options above | nodes (tag, length in value bytes, value, ascii, composite=false, children=[], byte offset) |
+| `ltv.build` | tagHex, payload, valueIsHex (default true), width/order options above | hex; one record |
+
 ### `tools.*` — the banking toolbox (1 op)
 
 | Op | Args | Result / notes |
@@ -2319,7 +2330,7 @@ says so instead of guessing. For the exact shape of any op, the single source of
 | `text.ansiHexToUtf8` | hex | text |
 | `text.utf8ToAnsiHex` | text | hex |
 
-**Host-only, not ABI ops.** `tcp_send`, `read_text_file`, `write_text_file`, and `list_buffer_files`
+**Host-only, not ABI ops.** `tcp_send`, `read_text_file`, `write_text_file`, `list_buffer_files`, and `default_buffer_directory`
 are Tauri commands (`src-tauri/src/host.rs`), invoked over Tauri IPC directly — not through
 `bufferx_invoke`. The frontend calls `hostCapabilities()` to learn whether the current host (native
 Tauri vs. WASM-in-browser) exposes them before offering the affected UI.

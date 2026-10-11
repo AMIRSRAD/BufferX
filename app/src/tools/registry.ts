@@ -15,6 +15,8 @@
 import { lazy, type ComponentType } from 'react'
 import {
   FileKey2,
+  Braces,
+  Package,
   Info,
   KeyRound,
   Languages,
@@ -58,8 +60,16 @@ export interface ToolDefinition {
  */
 export const TOOLS: ToolDefinition[] = [
   {
+    id: 'packager', title: 'Packager builder', icon: Package, group: 'workspace',
+    Panel: lazy(() => import('@/tools/packager/PackagerPanel')),
+  },
+  {
+    id: 'json', title: 'JSON', icon: Braces, group: 'analyze',
+    Panel: lazy(() => import('@/tools/json/JsonPanel')),
+  },
+  {
     id: 'tlv',
-    title: 'TLV',
+    title: 'TLV / LTV',
     icon: ListTree,
     group: 'analyze',
     shortcut: 'Alt+2',

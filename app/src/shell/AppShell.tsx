@@ -89,8 +89,14 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false)
   const [railMenuOpen, setRailMenuOpen] = useState(false)
-  const [splitRequested, setSplitRequested] = useState(false)
-  const [dockWidth, setDockWidth] = useState(() => defaultDockWidth(mode))
+  const splitTools = useTools((state) => state.splitTools)
+  const splitRequested = promoted !== null && splitTools.includes(promoted)
+  const setSplitRequested = useCallback((next: boolean | ((current: boolean) => boolean)) => {
+    if (promoted) useTools.getState().setSplit(promoted, typeof next === 'function' ? next(splitRequested) : next)
+  }, [promoted, splitRequested])
+  const storedDockWidth = useTools((state) => state.dockWidth)
+  const dockWidth = storedDockWidth ?? defaultDockWidth(mode)
+  const setDockWidth = useTools((state) => state.setDockWidth)
   const [problemsExpanded, setProblemsExpanded] = useState(false)
   const [problemFilter, setProblemFilter] = useState<ProblemFilter>('all')
   const [focusedRegion, setFocusedRegion] = useState<Region>('workspace')
@@ -114,13 +120,6 @@ export function AppShell() {
     }
     return map
   }, [])
-
-  // Dock width follows the mode's default until the operator drags it.
-  const dockTouched = useRef(false)
-  useEffect(() => {
-    if (dockTouched.current) return
-    setDockWidth(defaultDockWidth(mode))
-  }, [mode])
 
   const railAsMenu = mode === 'compact'
   const showRail = !railAsMenu
@@ -289,7 +288,8 @@ export function AppShell() {
         }
         if (focusedTool) {
           promote(focusedTool)
-          setSplitRequested((current) => !current)
+          const tools = useTools.getState()
+          tools.setSplit(focusedTool, !tools.splitTools.includes(focusedTool))
         } else toast.info('Open a tool first.')
       },
       railDestination,
@@ -459,7 +459,6 @@ export function AppShell() {
                 className={cn('min-h-0 min-w-0 focus:outline-none', promoted === null ? 'hidden' : 'flex', split ? 'shrink-0' : 'flex-1')}
               >
                 <ToolDock width={toolWidth} split={split} onWidthChange={(width) => {
-                  dockTouched.current = true
                   setDockWidth(width)
                 }} />
               </div>

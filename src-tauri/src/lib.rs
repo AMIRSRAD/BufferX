@@ -45,6 +45,7 @@ fn build_and_run() -> Result<(), Box<dyn std::error::Error>> {
             host::read_text_file,
             host::write_text_file,
             host::list_buffer_files,
+            host::default_buffer_directory,
         ])
         .run(tauri::generate_context!())?;
 

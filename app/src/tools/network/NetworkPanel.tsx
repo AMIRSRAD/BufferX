@@ -643,7 +643,7 @@ export default function NetworkPanel() {
   const limit = headerLimit(net.framing)
 
   return (
-    <div className="flex flex-col gap-group" onKeyDown={handleKeyDown}>
+    <div className="flex min-w-0 flex-col gap-group p-panel" onKeyDown={handleKeyDown}>
       {!tcpEnabled && (
         <InlineAlert
           tone="info"

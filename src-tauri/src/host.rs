@@ -35,6 +35,20 @@ const NO_DATA: &str = "TCP peer returned no data.";
 const TRUNCATED: &str = "TCP response ended before the framed payload was complete.";
 const READ_BUDGET_SPENT: &str = "TCP read failed or timed out: the time budget expired.";
 
+/// Portable default: keep the library alongside the executable, regardless of cwd.
+#[tauri::command]
+pub async fn default_buffer_directory(create: Option<bool>) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let executable = std::env::current_exe().map_err(|_| "Cannot locate the executable.".to_string())?;
+        let parent = executable.parent().ok_or_else(|| "Cannot locate the executable folder.".to_string())?;
+        let directory = parent.join("saved-buffers");
+        if create.unwrap_or(true) {
+            fs::create_dir_all(&directory).map_err(|_| "Cannot create saved-buffers beside the executable. Choose a writable folder in Settings → Buffers and session.".to_string())?;
+        }
+        Ok(directory.to_string_lossy().into_owned())
+    }).await.map_err(|_| "Cannot prepare the saved buffers folder.".to_string())?
+}
+
 // ---------------------------------------------------------------------------
 // TCP
 // ---------------------------------------------------------------------------
@@ -188,17 +202,24 @@ fn exchange(
     let _ = stream.set_nodelay(true);
 
     apply_deadline(&stream, deadline)?;
-    stream
-        .write_all(&request)
-        .map_err(|error| format!("TCP write failed: {error}"))?;
+    let mut written = 0;
+    while written < request.len() {
+        apply_deadline(&stream, deadline)?;
+        match stream.write(&request[written..]) {
+            Ok(0) => return Err("TCP write failed: the peer closed the connection.".to_string()),
+            Ok(count) => written += count,
+            Err(error) if error.kind() == ErrorKind::Interrupted => continue,
+            Err(error) => return Err(format!("TCP write failed: {error}")),
+        }
+    }
     stream
         .flush()
         .map_err(|error| format!("TCP write failed: {error}"))?;
 
     apply_deadline(&stream, deadline)?;
     let response = match framing {
-        Framing::None => read_until_close(&mut stream)?,
-        Framing::Ascii | Framing::Binary => read_framed(&mut stream, framing, header_size)?,
+        Framing::None => read_until_close(&mut stream, deadline)?,
+        Framing::Ascii | Framing::Binary => read_framed(&mut stream, framing, header_size, deadline)?,
     };
 
     Ok(TcpExchange {
@@ -211,6 +232,7 @@ fn exchange(
 }
 
 fn connect(host: &str, port: u16, deadline: Instant) -> Result<TcpStream, String> {
+    let host = host.strip_prefix('[').and_then(|value| value.strip_suffix(']')).unwrap_or(host);
     // Resolution is the one step with no timeout of its own; the budget is
     // re-checked before each connect attempt so a slow resolver still bounds
     // the whole call.
@@ -259,9 +281,9 @@ fn remaining(deadline: Instant) -> Result<Duration, String> {
 
 /// Reads a header, learns the body length from it, then reads exactly that
 /// many bytes. Returns header and body together, as they arrived.
-fn read_framed(stream: &mut TcpStream, framing: Framing, header_size: usize) -> Result<Vec<u8>, String> {
+fn read_framed(stream: &mut TcpStream, framing: Framing, header_size: usize, deadline: Instant) -> Result<Vec<u8>, String> {
     let mut response = vec![0u8; header_size];
-    read_exactly(stream, &mut response, true)?;
+    read_exactly(stream, &mut response, true, deadline)?;
 
     let body_length = match framing {
         Framing::Ascii => {
@@ -288,15 +310,16 @@ fn read_framed(stream: &mut TcpStream, framing: Framing, header_size: usize) -> 
 
     if body_length > 0 {
         let mut body = vec![0u8; body_length as usize];
-        read_exactly(stream, &mut body, false)?;
+        read_exactly(stream, &mut body, false, deadline)?;
         response.extend_from_slice(&body);
     }
     Ok(response)
 }
 
-fn read_exactly(stream: &mut TcpStream, buffer: &mut [u8], is_header: bool) -> Result<(), String> {
+fn read_exactly(stream: &mut TcpStream, buffer: &mut [u8], is_header: bool, deadline: Instant) -> Result<(), String> {
     let mut filled = 0;
     while filled < buffer.len() {
+        apply_deadline(stream, deadline)?;
         match stream.read(&mut buffer[filled..]) {
             Ok(0) => {
                 return Err(if is_header && filled == 0 {
@@ -316,11 +339,15 @@ fn read_exactly(stream: &mut TcpStream, buffer: &mut [u8], is_header: bool) -> R
 /// Unframed reads have no length to wait for, so the response is whatever
 /// arrives before the peer closes the connection or the budget runs out. The
 /// socket timeout set by `apply_deadline` is what ends the wait.
-fn read_until_close(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
+fn read_until_close(stream: &mut TcpStream, deadline: Instant) -> Result<Vec<u8>, String> {
     let mut response = Vec::new();
     let mut chunk = [0u8; 8192];
 
     loop {
+        if let Err(error) = apply_deadline(stream, deadline) {
+            if response.is_empty() { return Err(error); }
+            break;
+        }
         match stream.read(&mut chunk) {
             Ok(0) => break,
             Ok(read) => {
@@ -540,6 +567,90 @@ fn to_hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::thread;
+
+    fn mock_peer(request: Vec<u8>, chunks: Vec<Vec<u8>>, delay: Duration) -> (u16, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let worker = thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            let mut actual = vec![0; request.len()];
+            socket.read_exact(&mut actual).unwrap();
+            assert_eq!(actual, request);
+            for chunk in chunks {
+                if !delay.is_zero() { thread::sleep(delay); }
+                if socket.write_all(&chunk).is_err() { break; }
+            }
+        });
+        (port, worker)
+    }
+
+    #[test]
+    fn loopback_exchanges_all_framings_and_fragmented_responses() {
+        for (framing, width) in [(Framing::None, 0), (Framing::Ascii, 4), (Framing::Binary, 2)] {
+            let request = frame_request(framing, width, &[2, 0]).unwrap();
+            let response = frame_request(framing, width, &[2, 0x10, 0xff]).unwrap();
+            let chunks = response.iter().map(|byte| vec![*byte]).collect();
+            let (port, peer) = mock_peer(request.clone(), chunks, Duration::from_millis(2));
+            let result = exchange("127.0.0.1", port, framing, width, request.clone(), Duration::from_secs(2)).unwrap();
+            assert_eq!(result.request_hex, to_hex(&request));
+            assert_eq!(result.response_hex, to_hex(&response));
+            assert_eq!(result.bytes_sent, request.len());
+            assert_eq!(result.bytes_received, response.len());
+            peer.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn loopback_rejects_bad_headers_short_reads_and_oversized_responses() {
+        for (framing, width, response, expected) in [
+            (Framing::Ascii, 4, b"00X2AB".to_vec(), INVALID_ASCII_HEADER),
+            (Framing::Ascii, 4, b"0005AB".to_vec(), TRUNCATED),
+            (Framing::Binary, 2, vec![0], TRUNCATED),
+            (Framing::Ascii, 8, b"99999999".to_vec(), "above the"),
+            (Framing::None, 0, vec![], NO_DATA),
+        ] {
+            let request = frame_request(framing, width, &[1]).unwrap();
+            let (port, peer) = mock_peer(request.clone(), vec![response], Duration::ZERO);
+            let result = exchange("127.0.0.1", port, framing, width, request, Duration::from_secs(2));
+            assert!(result.err().unwrap().contains(expected));
+            peer.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn a_dribbling_peer_cannot_extend_the_total_read_budget() {
+        let request = frame_request(Framing::Ascii, 4, &[1]).unwrap();
+        let mut chunks = vec![b"0020".to_vec()];
+        chunks.extend((0..20).map(|_| vec![0x41]));
+        let (port, peer) = mock_peer(request.clone(), chunks, Duration::from_millis(40));
+        let started = Instant::now();
+        let error = exchange("127.0.0.1", port, Framing::Ascii, 4, request, Duration::from_millis(160)).err().unwrap();
+        assert!(error.contains("timed out") || error.contains("budget expired"));
+        assert!(started.elapsed() < Duration::from_millis(550));
+        peer.join().unwrap();
+    }
+
+    #[test]
+    fn unframed_read_returns_received_bytes_when_budget_expires() {
+        let (port, peer) = mock_peer(vec![1], vec![vec![0x41]; 20], Duration::from_millis(40));
+        let started = Instant::now();
+        let result = exchange("127.0.0.1", port, Framing::None, 0, vec![1], Duration::from_millis(160)).unwrap();
+        assert!(result.bytes_received > 0 && result.bytes_received < 20);
+        assert!(started.elapsed() < Duration::from_millis(550));
+        peer.join().unwrap();
+    }
+
+    #[test]
+    fn bracketed_ipv6_literal_connects() {
+        let Ok(listener) = TcpListener::bind("[::1]:0") else { return; };
+        let port = listener.local_addr().unwrap().port();
+        let worker = thread::spawn(move || listener.accept().unwrap());
+        let socket = connect("[::1]", port, Instant::now() + Duration::from_secs(2)).unwrap();
+        drop(socket); drop(worker.join().unwrap());
+    }
 
     #[test]
     fn ascii_framing_matches_the_pinned_vector() {

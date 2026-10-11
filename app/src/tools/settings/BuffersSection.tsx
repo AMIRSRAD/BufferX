@@ -42,6 +42,7 @@ import {
   writeTextFileNative,
 } from './hostFiles'
 import { usePreferences } from './preferences'
+import { LibraryLocation } from './LibraryLocation'
 
 const BUFFER_FILTERS = [{ name: 'BufferX buffers', extensions: [BUFFER_FILE_EXTENSION, 'json'] }]
 
@@ -277,6 +278,7 @@ export function BuffersSection() {
         </ReadoutGroup>
       </SectionCard>
 
+      <LibraryLocation />
       <SectionCard title="Session">
         <Switch
           checked={autosaveDrafts}

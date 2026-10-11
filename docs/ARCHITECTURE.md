@@ -42,7 +42,7 @@ The ABI knows the core but not the host. The host knows the ABI but not the doma
 ### `BufferXCore`
 
 The banking domain: ISO 8583 encode/decode, packager loading, MAC, PIN blocks, PIN verification and
-translation, symmetric crypto, RSA, TLV, IranSystem text conversion, and banking utilities.
+translation, symmetric crypto, RSA, TLV and fixed-width LTV, IranSystem text conversion, and banking utilities.
 
 Its only dependency is a crypto provider (currently OpenSSL). It has **no** dependency on Qt, on a UI
 framework, on a transport, or on the platform. That is deliberate and load-bearing: it is what allows
@@ -100,6 +100,22 @@ The frontend talks to an `EngineTransport` and does not know which one it has:
 Capabilities are negotiated at startup rather than assumed. Panels that need a missing capability are
 **disabled with an explanation**, not hidden — an operator should be able to see that the ISO host
 tester exists and learn why it needs the desktop app.
+
+## Tool and host state
+
+The packager builder produces XML definitions and applies them through `packager.loadXml`, merging
+the current registry first so unrelated definitions survive. LTV parsing/building lives in
+`core/src/Ltv.cpp` and is exposed through `ltv.parse` and `ltv.build` in the shared ABI.
+
+JSON inspection is frontend-only. A dedicated worker validates source and returns a tree with source
+ranges; formatting uses the original scalar tokens to avoid rounding numbers or losing duplicate
+properties. CodeMirror renders the source and errors, and the structure table virtualizes rows.
+
+Workspace persistence explicitly allows tool identities, active tool, split preferences, and dock
+width. Payloads remain in memory. Saved-buffer library persistence stores a folder override and
+annotations; `default_buffer_directory` resolves the portable default beside the executable at runtime.
+TCP framing and socket deadlines remain in the Rust host. See [TOOLS_GUIDE.md](TOOLS_GUIDE.md) for
+operator workflows and limits.
 
 ## Change rules
 

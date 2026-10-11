@@ -1063,6 +1063,25 @@ int main() {
                     "a wrong-typed argument yields BAD_ARGUMENT");
     }
 
+    {
+        json::Value args = object();
+        args.set("tagHex", json::Value("01"));
+        args.set("payload", json::Value("414243"));
+        args.set("lengthBytes", json::Value(2));
+        args.set("tagBytes", json::Value(1));
+        const auto built = expectOk(session, "ltv.build", args, "LTV build through the ABI");
+        checkEqual(dataString(built, "hex", "ltv.build"), "000301414243", "LTV golden wire");
+        args.set("payload", json::Value("000301414243"));
+        const auto parsed = expectOk(session, "ltv.parse", args, "LTV parse through the ABI");
+        const auto* nodes = parsed.find("nodes");
+        check(nodes && nodes->isArray() && nodes->size() == 1, "LTV record returned to the frontend");
+        args.set("lengthBytes", json::Value(0));
+        expectError(session, "ltv.parse", args, "BAD_ARGUMENT", "LTV rejects invalid widths at the ABI");
+        args.set("lengthBytes", json::Value(2));
+        args.set("payload", json::Value("000A0141"));
+        expectError(session, "ltv.parse", args, "DECODE_FAILED", "LTV rejects truncated records at the ABI");
+    }
+
     bufferx_close(session);
     // Closing NULL must be a no-op rather than a fault on the default session.
     bufferx_close(nullptr);

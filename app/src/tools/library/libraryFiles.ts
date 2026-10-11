@@ -12,6 +12,10 @@ import { invoke } from '@tauri-apps/api/core'
 
 import { hostCapabilities } from '@/engine/client'
 
+export async function defaultLibraryFolder(create = true): Promise<string> {
+  return invoke<string>('default_buffer_directory', { create })
+}
+
 /** One file in the library folder, as reported by the host. */
 export interface LibraryFile {
   name: string

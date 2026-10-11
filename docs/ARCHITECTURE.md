@@ -103,6 +103,14 @@ tester exists and learn why it needs the desktop app.
 
 ## Tool and host state
 
+Desktop startup checks the shared application update policy before constructing the banking engine
+or any workspace webview. The primary request runs in the app; unless it confirms a block, a separate
+hidden native checker requests the secondary. Both use `src-tauri/policy-check` for parsing and HTTP.
+Only a valid block stops startup; other outcomes allow it. The checker has a fixed production URL,
+bounded lifetime, and no persisted state. `build.rs` builds it and Tauri bundles it as an external binary.
+Deployment instructions are owned by the sibling License repository's `README.md` and `BufferX.md`.
+Run `pwsh -File scripts/verify-startup-policy.ps1` for isolated HTTP/process integration tests.
+
 The packager builder produces XML definitions and applies them through `packager.loadXml`, merging
 the current registry first so unrelated definitions survive. LTV parsing/building lives in
 `core/src/Ltv.cpp` and is exposed through `ltv.parse` and `ltv.build` in the shared ABI.

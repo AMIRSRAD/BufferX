@@ -18,17 +18,37 @@ mod host;
 
 use tauri::Manager;
 
+const _: () = assert!(
+    !bufferx_startup_policy::TEST_FIXTURES_ENABLED,
+    "The desktop application must never include startup-policy test fixtures."
+);
+
 /// Builds and runs the application, returning once the last window closes.
 ///
 /// Startup failures are reported rather than unwrapped: a missing engine
 /// session or a malformed generated context both surface as an `Err` that
 /// [`crate::run`]'s caller turns into a non-zero exit.
 fn build_and_run() -> Result<(), Box<dyn std::error::Error>> {
+    // No engine, user files, or webview is opened until both policy checks finish.
+    let helper = std::env::current_exe()
+        .ok()
+        .and_then(|executable| {
+            executable.parent().map(|directory| directory.join(bufferx_startup_policy::HELPER_NAME))
+        })
+        .unwrap_or_default();
+    let blocked = bufferx_startup_policy::update_required(env!("CARGO_PKG_VERSION"), &helper);
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .setup(|app| {
+        .setup(move |app| {
+            if blocked {
+                use tauri_plugin_dialog::DialogExt;
+                let handle = app.handle().clone();
+                app.dialog().message("BufferX needs an update before it can be used. Get the latest version from https://amirsrad.ir.")
+                    .title("Update required").show(move |_| handle.exit(0));
+                return Ok(());
+            }
             // One engine session for the whole process, opened before the
             // webview can issue its first invoke. A failure here is fatal:
             // without a session there is nothing for the UI to talk to, and a
@@ -36,6 +56,7 @@ fn build_and_run() -> Result<(), Box<dyn std::error::Error>> {
             // clean refusal to start.
             let engine = engine::Engine::new()?;
             app.manage(engine);
+            tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?.build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

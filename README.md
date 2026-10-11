@@ -93,6 +93,12 @@ see the [tools guide](docs/TOOLS_GUIDE.md).
 
 ## Build
 
+The desktop app follows the shared License repository's startup update policy. A confirmed online
+block shows **Update required** before the workspace opens; unavailable or invalid checks allow launch.
+The build also produces `BufferX.PolicyCheck`, a hidden native sidecar included in installer payloads.
+For a bare-executable distribution, keep it beside BufferX. Operational instructions live in the
+sibling License repository's `BufferX.md`; loopback verification is `pwsh scripts/verify-startup-policy.ps1`.
+
 ### Requirements
 
 - CMake 3.23+ and a C++17 compiler (MSVC 2022, clang, or gcc)

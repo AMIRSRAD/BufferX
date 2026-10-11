@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "BufferX",
+        "create": false,
         "width": 1440,
         "height": 900,
         "minWidth": 960,
@@ -31,6 +32,7 @@
   },
   "bundle": {
     "active": true,
+    "externalBin": ["binaries/BufferX.PolicyCheck"],
     "targets": ["msi", "nsis", "deb", "appimage", "dmg"],
     "windows": {
       "nsis": {

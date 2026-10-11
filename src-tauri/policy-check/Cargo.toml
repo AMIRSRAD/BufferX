@@ -1,0 +1,31 @@
+[package]
+name = "bufferx-startup-policy"
+version = "2.0.0"
+edition = "2021"
+publish = false
+
+[features]
+test-fixtures = []
+
+[dependencies]
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "native-tls", "system-proxy"] }
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Diagnostics_Debug", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_Threading"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[[bin]]
+name = "bufferx-policy-check"
+path = "src/main.rs"
+
+[[example]]
+name = "policy-fixture"
+required-features = ["test-fixtures"]
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true

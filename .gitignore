@@ -19,6 +19,7 @@ node_modules/
 third_party/
 # Tauri regenerates these from tauri.conf.json and the capability files.
 src-tauri/gen/
+src-tauri/binaries/
 
 # Generated WebAssembly artifacts (produced by scripts/build-wasm.sh)
 app/public/wasm/

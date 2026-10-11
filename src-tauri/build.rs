@@ -50,9 +50,50 @@ fn main() {
     // `cargo tauri dev` starts without the developer having to fix PATH first.
     stage_runtime_dependencies(&target, &openssl);
 
+    build_policy_checker(&manifest_dir, &repo_root, &target);
+
     // Last, because it consumes tauri.conf.json and the capability files and
     // should be the thing that fails if those are malformed.
     tauri_build::build();
+}
+
+/// Build a standalone production helper in a separate Cargo output directory.
+/// Tauri stages the target-suffixed sidecar beside the app and bundles it in installers.
+fn build_policy_checker(manifest_dir: &Path, repo_root: &Path, target: &TargetInfo) {
+    let source = manifest_dir.join("policy-check");
+    println!("cargo:rerun-if-changed={}", source.display());
+    let triple = required_env("TARGET");
+    let output = repo_root.join("build/policy-check");
+    let status = std::process::Command::new(required_env("CARGO"))
+        .args([
+            "build",
+            "--locked",
+            "--release",
+            "--no-default-features",
+            "--bin",
+            "bufferx-policy-check",
+            "--target",
+            &triple,
+        ])
+        .arg("--manifest-path")
+        .arg(source.join("Cargo.toml"))
+        .arg("--target-dir")
+        .arg(&output)
+        .status()
+        .expect("Cannot start the policy checker build");
+    assert!(status.success(), "Production policy checker build failed");
+    let extension = if target.is_windows() { ".exe" } else { "" };
+    let binary = output
+        .join(&triple)
+        .join("release")
+        .join(format!("bufferx-policy-check{extension}"));
+    let sidecars = manifest_dir.join("binaries");
+    fs::create_dir_all(&sidecars).expect("Cannot create sidecar staging directory");
+    fs::copy(
+        binary,
+        sidecars.join(format!("BufferX.PolicyCheck-{triple}{extension}")),
+    )
+    .expect("Cannot stage the policy checker");
 }
 
 // ---------------------------------------------------------------------------
